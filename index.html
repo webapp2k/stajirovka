@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  СТАЖИРОВКА — трекер уроков
+  ------------------------------------------------------------
+  КУРАТОРСКИЙ ДОСТУП (восстановление):
+    Секретный код:  ReadymagicKeyKey
+    Ссылка куратора: <твой-сайт>.netlify.app/?admin=ReadymagicKeyKey
+    Почта владельца: webapp2k@gmail.com
+  Если забыли код — он записан здесь, в начале файла.
+  ============================================================
+-->
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Стажировка">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect width='180' height='180' rx='40' fill='%230a0a0a'/%3E%3Ctext x='90' y='118' font-size='90' font-family='Inter,sans-serif' font-weight='800' fill='%232f5cff' text-anchor='middle'%3E%D0%A1%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22%D0%A1%D1%82%D0%B0%D0%B6%D0%B8%D1%80%D0%BE%D0%B2%D0%BA%D0%B0%22%2C%22short_name%22%3A%22%D0%A1%D1%82%D0%B0%D0%B6%D0%B8%D1%80%D0%BE%D0%B2%D0%BA%D0%B0%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f6f6f8%22%2C%22theme_color%22%3A%22%230a0a0a%22%7D">
+<title>Стажировка — Трекер уроков</title>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import {
+    getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC0MgnoNlo8NW4p9a8754eLYJIEvjv54k0",
+    authDomain: "internship-rmc-studio.firebaseapp.com",
+    projectId: "internship-rmc-studio",
+    storageBucket: "internship-rmc-studio.firebasestorage.app",
+    messagingSenderId: "551887587279",
+    appId: "1:551887587279:web:37f43176eced5f9796f4ba"
+  };
+
+  window._dbReadyPromise = new Promise((resolve, reject) => {
+    try {
+      const app = initializeApp(firebaseConfig);
+      window._db = getFirestore(app);
+      window._fb = { collection, doc, getDoc, getDocs, setDoc, deleteDoc };
+      resolve(true);
+    } catch (e) {
+      console.error('Firebase init failed', e);
+      reject(e);
+    }
+  });
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  /* ============ DESIGN SYSTEM ============ */
+  :root {
+    /* color */
+    --bg: #f6f6f8;
+    --surface: #ffffff;
+    --ink: #0a0a0a;
+    --ink-soft: #1a1a1a;
+    --muted: #9a9a9f;
+    --muted-2: #c4c4c8;
+    --line: #e3e3e8;
+    --field: #f1f1f4;
+    --field-border: #e3e3e8;
+    --accent: #2f5cff;
+    --accent-ink: #ffffff;
+    --accent-soft: #e7edff;
+    --pill-blue: #dde6ff;
+    --pill-blue-ink: #2f5cff;
+    --neutral-zone: #f6f6f8;
+    --done: #1fb469;
+    --done-soft: #e6f7ef;
+    --danger: #ff4b4b;
+    --danger-soft: #ffecec;
+
+    /* spacing scale (4pt) */
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px;
+    --s5: 20px; --s6: 24px; --s7: 32px; --s8: 40px;
+
+    /* radius */
+    --r-sm: 10px; --r-md: 16px; --r-lg: 22px; --r-pill: 999px;
+
+    /* element heights */
+    --h-control: 52px;   /* inputs, selects, primary buttons */
+    --h-header: 60px;
+
+    /* page gutter */
+    --gutter: 20px;
+    --maxw: 640px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: block; }
+
+  /* ============ HEADER ============ */
+  .app-header {
+    height: var(--h-header);
+    background: var(--ink);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 var(--gutter);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .app-logo { font-size: 17px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+  .app-badge {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    color: #fff; background: rgba(255,255,255,0.12); padding: 6px 12px; border-radius: var(--r-pill);
+  }
+  .back-btn {
+    width: 38px; height: 38px; border-radius: var(--r-pill);
+    background: rgba(255,255,255,0.12); border: none; color: #fff;
+    font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .back-btn:hover { background: rgba(255,255,255,0.22); }
+  .app-header-centered { justify-content: center; }
+  .back-btn-left { position: absolute; left: var(--gutter); }
+
+  /* ============ LAYOUT ============ */
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: var(--s6) var(--gutter) var(--s8); }
+  .student-wrap { max-width: var(--maxw); margin: 0 auto; padding: var(--s6) var(--gutter) var(--s8); }
+
+  /* big display title */
+  .display-title { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; }
+  .section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--s4); }
+  .group-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: var(--s6) 0 var(--s3); }
+
+  /* ============ CONTROLS ============ */
+  .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: var(--s2); }
+  .form-input, .form-select {
+    width: 100%; height: var(--h-control); padding: 0 var(--s4);
+    border: 1px solid var(--field-border); border-radius: var(--r-md); background: var(--field);
+    font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 500; color: var(--ink);
+    appearance: none; transition: box-shadow 0.15s;
+  }
+  .form-input::placeholder { color: var(--muted-2); font-weight: 400; }
+  .form-input:focus, .form-select:focus { outline: none; box-shadow: 0 0 0 2px var(--accent); }
+  .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239a9a9f' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right var(--s4) center; padding-right: var(--s7); cursor: pointer;
+  }
+
+  /* buttons */
+  .btn {
+    height: var(--h-control); padding: 0 var(--s6); border: none; border-radius: var(--r-md);
+    font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: transform 0.08s, background 0.15s, opacity 0.15s; white-space: nowrap;
+    display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  }
+  .btn:active { transform: scale(0.985); }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-dark { background: var(--ink); color: #fff; }
+  .btn-block { width: 100%; }
+
+  .fab {
+    width: 56px; height: 56px; border-radius: var(--r-pill); background: var(--accent);
+    color: #fff; border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 20px rgba(47,92,255,0.32); transition: transform 0.1s;
+  }
+  .fab:active { transform: scale(0.94); }
+
+  .btn-add-row {
+    width: 100%; height: var(--h-control); background: var(--accent-soft); border: none; border-radius: var(--r-md);
+    color: var(--accent); font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;
+    margin-top: var(--s3); transition: background 0.15s;
+  }
+  .btn-add-row:hover { background: var(--accent-soft); }
+
+  .icon-btn {
+    width: 44px; height: 44px; border-radius: var(--r-pill); background: var(--field); border: none;
+    font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .icon-btn:hover { background: var(--accent-soft); }
+  .icon-del-btn {
+    width: 44px; height: 44px; border-radius: var(--r-pill); background: var(--field); border: 1px solid var(--line);
+    font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .icon-del-btn:hover { background: var(--danger-soft); }
+
+  /* ============ CARDS / ADMIN ============ */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s5); margin-bottom: var(--s6); }
+  .card-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--s4); }
+
+  .admin-hero { margin-bottom: var(--s7); }
+  .admin-hero .display-title span { color: var(--muted-2); }
+
+  .form-stack { display: flex; flex-direction: column; gap: var(--s3); }
+
+  /* student list */
+  .student-list { display: flex; flex-direction: column; gap: var(--s3); }
+  .student-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: var(--s5); display: flex; align-items: center; gap: var(--s4); cursor: pointer;
+    transition: border-color 0.15s, transform 0.08s;
+  }
+  .student-card:hover { border-color: var(--ink); }
+  .student-card:active { transform: scale(0.99); }
+  .student-avatar {
+    width: 46px; height: 46px; border-radius: var(--r-pill); background: var(--ink); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; flex-shrink: 0;
+  }
+  .student-info-col { flex: 1; min-width: 0; }
+  .student-name-row { display: flex; align-items: center; gap: var(--s2); margin-bottom: 4px; flex-wrap: wrap; }
+  .student-name { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; margin-bottom: var(--s1); }
+  .student-meta { display: flex; align-items: center; gap: var(--s2); margin-bottom: 6px; }
+  .student-submeta { font-size: 12px; color: var(--muted); }
+  .tariff-pill { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: var(--r-pill); letter-spacing: 0.01em; }
+  .tariff-pill.t1 { background: var(--field); color: var(--ink-soft); }
+  .tariff-pill.t2 { background: var(--pill-blue); color: var(--pill-blue-ink); }
+  .student-right { display: flex; align-items: center; gap: var(--s3); }
+  .ring {
+    width: 44px; height: 44px; flex-shrink: 0; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .ring-pct { font-size: 11px; font-weight: 700; }
+
+  /* ============ EDITOR ============ */
+  .editor-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4); margin-bottom: var(--s5); }
+  .editor-name { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+  .editor-top-actions { display: flex; align-items: center; gap: var(--s2); flex-shrink: 0; }
+  .preview-btn {
+    height: 44px; padding: 0 var(--s4); border-radius: var(--r-pill); background: var(--field); border: 1px solid var(--line);
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s;
+  }
+  .preview-btn:hover { background: var(--accent-soft); }
+
+  .info-blocks { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s6); }
+  .info-block-input {
+    width: 100%; height: var(--h-control); padding: 0 var(--s4); border: 1px solid var(--field-border); border-radius: var(--r-md);
+    background: var(--field); font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 500; color: var(--ink); appearance: none;
+  }
+  .info-block-input:focus { outline: none; box-shadow: 0 0 0 2px var(--accent); }
+  select.info-block-input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239a9a9f' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right var(--s4) center; padding-right: var(--s7); cursor: pointer;
+  }
+  .info-block-link {
+    display: flex; align-items: center; gap: var(--s2); height: var(--h-control); padding: 0 6px 0 var(--s4);
+    border-radius: var(--r-md); background: var(--field); border: 1px solid var(--field-border);
+  }
+  .info-block-link .link-value { flex: 1; font-size: 13px; font-family: 'Inter', monospace; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .copy-btn {
+    height: 40px; padding: 0 var(--s4); border-radius: var(--r-sm); background: var(--ink); color: #fff; border: none;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
+  }
+  .copy-btn:hover { opacity: 0.88; }
+
+  /* tabs — segment control, blue active */
+  .tabs { display: flex; gap: 6px; background: var(--surface); padding: 5px; border-radius: var(--r-md); margin-bottom: var(--s6); border: 1px solid var(--line); }
+  .tab {
+    flex: 1; height: 44px; background: none; border: none; border-radius: var(--r-sm);
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s;
+  }
+  .tab.active { background: var(--accent); color: #fff; }
+  .tabs-lg { margin-top: var(--s7); margin-bottom: var(--s6); }
+  .tabs-lg .tab { height: 50px; font-size: 15px; }
+  .stab-panel { display: none; }
+  .stab-panel.active { display: block; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .editor-footer { padding-top: var(--s6); }
+  .floating-save { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; transform: translateY(120%); transition: transform 0.25s ease; pointer-events: none; }
+  .floating-save.show { transform: translateY(0); pointer-events: auto; }
+  .floating-save-inner { max-width: var(--maxw); margin: 0 auto; padding: var(--s3) var(--gutter) calc(var(--s4) + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 70%, transparent); }
+  .floating-save .btn-primary { box-shadow: 0 6px 20px rgba(47,92,255,0.3); }
+  .editor-neutral-zone { background: var(--surface); border-bottom: 1px solid var(--line); }
+  .editor-white-plate { background: var(--bg); min-height: 50vh; }
+  /* fields inside white top block use neutral page-bg colour */
+  .editor-neutral-zone .info-block-input,
+  .editor-neutral-zone .info-block-link { background: var(--bg); border-color: var(--line); }
+  .editor-neutral-zone .preview-btn,
+  .editor-neutral-zone .icon-del-btn { background: var(--bg); }
+  .block-head { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: var(--s4); }
+
+  /* lesson editor rows */
+  .module-group { margin-bottom: var(--s5); }
+  .module-group-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--s3); }
+  .lesson-editor-list { display: flex; flex-direction: column; gap: var(--s2); }
+  .lesson-editor-item {
+    display: flex; align-items: center; gap: var(--s3); padding: var(--s4); background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--r-md); cursor: pointer; transition: all 0.12s; user-select: none;
+  }
+  .lesson-editor-item:hover { border-color: var(--muted-2); }
+  .lesson-editor-item.is-priority { border-color: var(--accent); background: var(--accent-soft); }
+  .priority-toggle {
+    width: 24px; height: 24px; border: 2px solid var(--muted-2); border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; background: var(--surface); transition: all 0.12s;
+  }
+  .is-priority .priority-toggle { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .lesson-ei-title { flex: 1; font-size: 15px; font-weight: 500; }
+  .priority-badge { font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: 0.02em; }
+
+  /* section divider (t2) */
+  .section-divider { margin: var(--s6) 0 var(--s4); }
+  .section-divider-label { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .section-divider-line { display: none; }
+
+  /* ============ EDIT ROWS (calls / payments) ============ */
+  .edit-row { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s5); margin-bottom: var(--s3); }
+  .edit-row.row-done { opacity: 0.65; }
+  .edit-row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s4); }
+  .edit-row-num { display: flex; align-items: center; gap: var(--s3); font-weight: 700; font-size: 15px; }
+  .edit-row-num .dot {
+    width: 28px; height: 28px; border-radius: var(--r-pill); background: var(--field); color: var(--ink);
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+  }
+  .edit-row-num .dot.call { background: var(--pill-blue); color: var(--pill-blue-ink); }
+  .edit-row-num .dot.paid { background: var(--done-soft); color: var(--done); }
+  .row-del { width: 32px; height: 32px; border-radius: var(--r-pill); background: none; border: none; color: var(--muted-2); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .row-del:hover { background: var(--danger-soft); color: var(--danger); }
+  .edit-row-fields { display: flex; gap: var(--s3); flex-wrap: wrap; }
+  .edit-row-fields .form-field { flex: 1; min-width: 110px; }
+  .row-ics-btn {
+    width: 100%; height: 46px; margin-top: var(--s3); background: #fff; border: 1px solid var(--accent); border-radius: var(--r-md);
+    color: var(--accent); font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  .row-ics-btn:hover { background: var(--accent-soft); }
+
+  .pay-paid-toggle { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--line); }
+  .pay-paid-check {
+    width: 26px; height: 26px; border: 2px solid var(--muted-2); border-radius: 8px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; transition: all 0.12s;
+  }
+  .pay-paid-check.on { background: var(--done); border-color: var(--done); }
+  .pay-paid-label { font-size: 14px; font-weight: 500; color: var(--ink-soft); }
+  .pay-method-inline {
+    margin-left: auto; height: 38px; padding: 0 var(--s3); border: none; border-radius: var(--r-sm); background: var(--field);
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer;
+  }
+
+  /* payment summary box (dark hero) */
+  .pay-summary-box { background: var(--ink); color: #fff; border-radius: var(--r-lg); padding: var(--s5) var(--s5) var(--s6); margin-bottom: var(--s4); }
+  .pay-summary-status { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-2); margin-bottom: var(--s2); }
+  .pay-summary-amount { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+  .pay-summary-amount span { color: var(--muted); font-size: 17px; font-weight: 600; }
+  .pay-progress { height: 6px; background: rgba(255,255,255,0.15); border-radius: var(--r-pill); overflow: hidden; margin-top: var(--s4); }
+  .pay-progress-fill { height: 100%; background: var(--accent); border-radius: var(--r-pill); transition: width 0.4s; }
+
+  /* read-only pay items (student) */
+  .pay-item { display: flex; align-items: center; gap: var(--s3); padding: var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); margin-bottom: var(--s2); }
+  .pay-item.paid { background: var(--done-soft); border: 1px solid var(--done); }
+  .pay-check { width: 26px; height: 26px; border: 2px solid var(--muted-2); border-radius: var(--r-pill); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; }
+  .pay-item.paid .pay-check { background: var(--done); border-color: var(--done); }
+  .pay-body { flex: 1; }
+  .pay-label-row { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  .pay-meta { font-size: 12px; color: var(--muted); }
+  .pay-amount-big { font-size: 16px; font-weight: 700; white-space: nowrap; }
+
+  /* ============ STUDENT VIEW ============ */
+  .student-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4); margin-bottom: var(--s6); }
+  .s-name { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin-bottom: var(--s1); }
+  .s-tagline { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .cal-btn {
+    height: 44px; padding: 0 var(--s4); background: var(--ink); color: #fff; border: none; border-radius: var(--r-pill);
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;
+    transition: opacity 0.15s;
+  }
+  .cal-btn:hover { opacity: 0.9; }
+
+  /* dark progress hero */
+  .progress-box { background: var(--ink); color: #fff; border-radius: var(--r-lg); padding: var(--s6); margin-bottom: var(--s6); }
+  .progress-label { font-size: 13px; font-weight: 500; color: var(--muted-2); margin-bottom: var(--s2); }
+  .progress-big { font-size: 48px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; margin-bottom: var(--s4); }
+  .progress-big span { font-size: 22px; color: var(--muted); font-weight: 600; }
+  .prog-bar { height: 8px; background: rgba(255,255,255,0.15); border-radius: var(--r-pill); overflow: hidden; }
+  .prog-bar-fill { height: 100%; background: var(--accent); border-radius: var(--r-pill); transition: width 0.4s; }
+  .progress-detail { display: flex; flex-direction: column; }
+
+  .module-subtitle { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: var(--s5) 0 var(--s3); }
+  /* full-bleed module accordion */
+  .module-block { margin: 0 calc(-1 * var(--gutter)); border-top: 1px solid var(--line); }
+  .module-block:last-of-type { border-bottom: 1px solid var(--line); }
+  .module-header { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: 56px; padding: var(--s3) var(--gutter); background: var(--bg); cursor: pointer; user-select: none; }
+  .module-header-text { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; flex: 1; }
+  .module-header-right { display: flex; align-items: center; gap: var(--s3); flex-shrink: 0; }
+  .module-count { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface); border: 1px solid var(--line); padding: 3px 9px; border-radius: var(--r-pill); }
+  .module-count.done { color: var(--done); background: var(--done-soft); border-color: transparent; }
+  .module-chevron { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; color: var(--muted); transition: transform 0.2s; }
+  .module-block.collapsed .module-chevron { transform: rotate(-90deg); }
+  .module-lessons { padding: 0 var(--gutter) var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+  .module-block.collapsed .module-lessons { display: none; }
+  .module-lessons .lesson-item:last-child { margin-bottom: 0; }
+  .lesson-item {
+    display: flex; align-items: center; gap: var(--s3); padding: var(--s4); background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--r-md); margin-bottom: var(--s2); cursor: pointer; transition: all 0.12s;
+  }
+  .lesson-item.priority { border-color: var(--accent); background: var(--accent-soft); }
+  .lesson-item.done { background: var(--done-soft); border-color: transparent; }
+  .lesson-item.priority.done { background: var(--done-soft); border: 1px solid var(--done); }
+  .lesson-item.done .lesson-title { color: var(--muted); text-decoration: line-through; }
+  .lesson-check { width: 26px; height: 26px; border: 2px solid var(--muted-2); border-radius: var(--r-pill); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; transition: all 0.12s; }
+  .lesson-item.priority:not(.done) .lesson-check { border-color: var(--accent); }
+  .lesson-item.done .lesson-check { background: var(--done); border-color: var(--done); }
+  .lesson-body { flex: 1; }
+  .lesson-title { font-size: 15px; font-weight: 500; line-height: 1.3; }
+  .lesson-star { font-size: 16px; color: var(--accent); flex-shrink: 0; }
+  .lesson-star.done-star { color: var(--done); }
+
+  /* event items (student calendar) */
+  .event-item { display: flex; align-items: center; gap: var(--s3); padding: var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); margin-bottom: var(--s2); }
+  .event-item.call { border-left: 3px solid var(--accent); }
+  .event-item.event-done { border-left-color: var(--done); }
+  .event-icon { font-size: 18px; flex-shrink: 0; }
+  .event-body { flex: 1; }
+  .event-title { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  .event-done .event-title { color: var(--done); }
+  .event-when { font-size: 12px; color: var(--muted); }
+  .event-type-tag { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: var(--r-pill); }
+  .event-type-tag.call { background: var(--pill-blue); color: var(--pill-blue-ink); }
+  .ics-btn-compact { width: 44px; height: 44px; background: var(--field); border: none; border-radius: var(--r-md); font-size: 18px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+  .ics-btn-compact:hover { background: var(--accent-soft); }
+  .ics-btn { margin-top: var(--s2); background: var(--field); border: none; color: var(--accent); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: var(--r-sm); cursor: pointer; }
+
+  /* student call cards */
+  .call-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s4); margin-bottom: var(--s2); border-left: 3px solid var(--accent); }
+  .call-card.is-done { border-left-color: var(--done); opacity: 0.75; }
+  .call-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
+  .call-card-title { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+  .call-card.is-done .call-card-title { color: var(--done); }
+  .call-card-when { font-size: 12px; color: var(--muted); }
+  .call-done-badge { width: 26px; height: 26px; border-radius: var(--r-pill); background: var(--done); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .call-ics-btn { width: 100%; height: 44px; margin-top: var(--s3); background: #fff; border: 1px solid var(--accent); border-radius: var(--r-md); color: var(--accent); font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .call-ics-btn:hover { background: var(--accent-soft); }
+  .call-arrow-btn { width: 40px; height: 40px; border-radius: var(--r-pill); background: var(--accent); color: #fff; border: none; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.15s; }
+  .call-arrow-btn:hover { opacity: 0.88; }
+  .call-cal-btn { height: 40px; padding: 0 var(--s4); border-radius: var(--r-pill); background: var(--accent); color: #fff; border: none; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; transition: opacity 0.15s; }
+  .call-cal-btn:hover { opacity: 0.88; }
+  .cal-arrow { font-size: 16px; }
+  .cal-arrow-svg { display: block; }
+  .call-card.no-date { border-left-color: var(--muted-2); opacity: 0.9; }
+  .call-card.no-date .call-card-when { color: var(--muted-2); font-style: italic; }
+  .pay-check-sq { width: 26px; height: 26px; border: 2px solid var(--muted-2); border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; }
+  .pay-check-sq.on { background: var(--done); border-color: var(--done); }
+  .section-gap { height: var(--s4); }
+  .section-divider { margin: var(--s7) 0 var(--s4); }
+
+  .list-empty { text-align: center; padding: var(--s7) var(--s4); color: var(--muted); font-size: 14px; }
+  .empty-status { padding: var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--muted); font-size: 14px; text-align: center; }
+  .empty { text-align: center; padding: var(--s8) var(--s4); color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .empty-icon { font-size: 32px; margin-bottom: var(--s3); opacity: 0.3; }
+</style>
+</head>
+<body>
+
+<!-- ADMIN LIST -->
+<div id="screen-admin" class="screen active">
+  <div class="app-header">
+    <div class="app-logo">Стажировка</div>
+    <div class="app-badge">Куратор</div>
+  </div>
+  <div class="wrap">
+    <div class="admin-hero">
+      <div class="display-title">Твои ученицы</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Добавить ученицу</div>
+      <div class="form-stack">
+        <input class="form-input" id="new-name" placeholder="Имя" />
+        <input class="form-input" type="email" id="new-email" placeholder="Почта" />
+        <select class="form-select" id="new-tariff">
+          <option value="t1">Readymag</option>
+          <option value="t2">Readymag + Вебдизайн</option>
+        </select>
+        <button class="btn btn-primary btn-block" onclick="addStudent()">Добавить</button>
+      </div>
+    </div>
+
+    <div class="section-title">Все ученицы<span id="student-count"></span></div>
+    <div class="student-list" id="student-list"></div>
+  </div>
+</div>
+
+<!-- EDITOR -->
+<div id="screen-editor" class="screen">
+  <div class="app-header app-header-centered">
+    <button class="back-btn back-btn-left" onclick="cancelEdit()">←</button>
+    <div class="app-logo">Карточка ученицы</div>
+  </div>
+  <div class="editor-neutral-zone">
+    <div class="wrap" style="padding-bottom:var(--s6)">
+      <div class="editor-top">
+        <div class="editor-name" id="editor-name"></div>
+        <div class="editor-top-actions">
+          <button class="icon-del-btn" onclick="deleteStudent()" title="Удалить ученицу">🗑</button>
+          <button class="preview-btn" onclick="previewAsStudent()">👁 Предпросмотр</button>
+        </div>
+      </div>
+
+      <div class="info-blocks">
+        <input class="info-block-input" type="email" id="editor-email" placeholder="anna@mail.com" oninput="updateEmail(this.value)" />
+        <select class="info-block-input" id="editor-tariff" onchange="changeTariff(this.value)">
+          <option value="t1">Readymag</option>
+          <option value="t2">Readymag + Вебдизайн</option>
+        </select>
+        <div class="info-block-link">
+          <span class="link-value" id="editor-link-val"></span>
+          <button class="copy-btn" onclick="copyLink()">Копировать</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="editor-white-plate">
+    <div class="wrap" style="padding-top:var(--s6)">
+      <div class="tabs">
+        <button class="tab active" data-tab="plan" onclick="switchTab('plan')">План уроков</button>
+        <button class="tab" data-tab="calendar" onclick="switchTab('calendar')">Календарь</button>
+      </div>
+
+      <!-- PLAN TAB -->
+      <div class="tab-panel active" id="panel-plan">
+        <div id="lesson-editor-list"></div>
+      </div>
+
+    <!-- CALENDAR TAB (calls + payments) -->
+    <div class="tab-panel" id="panel-calendar">
+      <div class="block-head">Созвоны с Ксюшей</div>
+      <div id="call-list"></div>
+      <button class="btn-add-row" onclick="addCall()">+ Добавить созвон</button>
+
+      <div class="block-head" style="margin-top:var(--s7)">План оплат</div>
+      <div id="payment-summary"></div>
+      <div id="payment-list"></div>
+      <button class="btn-add-row" onclick="addPayment()">+ Добавить платёж</button>
+    </div>
+    </div>
+  </div>
+
+  <!-- floating save bar (appears on changes) -->
+  <div class="floating-save" id="floating-save">
+    <div class="floating-save-inner">
+      <button class="btn btn-primary btn-block" onclick="saveAndBack()">Сохранить изменения</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT VIEW -->
+<div id="screen-student" class="screen">
+  <div class="app-header app-header-centered">
+    <button class="back-btn back-btn-left" id="student-back-btn" onclick="backToEditor()" style="display:none">←</button>
+    <div class="app-logo">Стажировка</div>
+  </div>
+  <div class="student-wrap">
+    <div class="student-head-row">
+      <div>
+        <div class="s-name" id="s-name"></div>
+        <div class="s-tagline" id="s-tagline"></div>
+      </div>
+    </div>
+
+    <div class="tabs tabs-lg">
+      <button class="tab active" data-stab="plan" onclick="switchStudentTab('plan')">План уроков</button>
+      <button class="tab" data-stab="calendar" onclick="switchStudentTab('calendar')">Календарь</button>
+    </div>
+
+    <!-- PLAN -->
+    <div class="stab-panel active" id="spanel-plan">
+      <div class="progress-box">
+        <div class="progress-label">Прогресс курса</div>
+        <div class="progress-big" id="prog-num">0<span>/0</span></div>
+        <div class="prog-bar"><div class="prog-bar-fill" id="prog-fill" style="width:0%"></div></div>
+      </div>
+      <div id="student-lessons"></div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="stab-panel" id="spanel-calendar">
+      <div id="student-events"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CURRICULUM ──
+const TARIFFS = {
+  t1: { name: 'Readymag', pillClass: 't1' },
+  t2: { name: 'Readymag + Вебдизайн', pillClass: 't2' }
+};
+
+// Modules per tariff — t2 gets 2 extra design modules first
+const MODULES_DEF = {
+  design1: {
+    id: 'd1', name: 'Веб-дизайн: структура',
+    lessons: [
+      { id:'l1_1', title:'🛹 Мотивация на курс и орг. моменты' },
+      { id:'l1_2', title:'✨ Дизайн и веб-дизайн' },
+      { id:'l1_3', title:'👁 Качества веб-дизайнера' },
+      { id:'l1_4', title:'💡 Ниши и клиенты. Идея кейса' },
+      { id:'l1_5', title:'🎲 Типы сайтов. Задачи и особенности' },
+      { id:'l1_6', title:'🍫 Анализ конкурентов' },
+      { id:'l1_7', title:'🩻 Анализ целевой аудитории' },
+      { id:'l1_8', title:'🧬 Структура сайта' },
+      { id:'l1_9', title:'🏠 Прототип сайта' },
+      { id:'l1_10', title:'⌨️ SEO. Текстовый прототип' },
+      { id:'l1_11', title:'🎲 Подведение итогов модуля' },
+    ]
+  },
+  design2: {
+    id: 'd2', name: 'Веб-дизайн: визуал',
+    lessons: [
+      { id:'l2_1', title:'⚖️ UX, UI. Паттерны' },
+      { id:'l2_2', title:'😎 Насмотренность' },
+      { id:'l2_3', title:'🦋 Мудборд, концепт и вау-эффект' },
+      { id:'l2_4', title:'🎩 Стили. Эклектика. Плагиат' },
+      { id:'l2_5', title:'🏛 Композиция. Типы' },
+      { id:'l2_6', title:'🪜 Иерархия и композиционный центр' },
+      { id:'l2_7', title:'🎹 Сетка, модульность, ритм' },
+      { id:'l2_8', title:'🖊 Типографика' },
+      { id:'l2_9', title:'🌈 Цвет' },
+      { id:'l2_10', title:'🎀 Графические элементы' },
+      { id:'l2_11', title:'🧹 Финализация дизайна. Чистка' },
+      { id:'l2_12', title:'🎲 Подведение итогов модуля' },
+    ]
+  },
+  rm3: {
+    id: 'm3', name: 'RM. Вёрстка в Readymag. Виджеты',
+    lessons: [
+      { id:'l3_1', title:'🧡 Readymag. Мотивация. Тех-моменты' },
+      { id:'l3_2', title:'🎮 Создание проекта. Основной интерфейс' },
+      { id:'l3_3', title:'📐 Архитектура сайта. Страницы и режим превью' },
+      { id:'l3_4', title:'📏 Типы вёрстки по ширине. Сетка' },
+      { id:'l3_5', title:'🛶 Подготовка дизайна к вёрстке. Перенос' },
+      { id:'l3_6', title:'🟧 Слои и фон. Виджет Shape. Боковая док-станция' },
+      { id:'l3_7', title:'📷 Виджеты: Picture, Slideshow, Video' },
+      { id:'l3_8', title:'🔤 Виджет: Text' },
+      { id:'l3_9', title:'🪐 Виджеты действия: Button, Form, Hotspot' },
+      { id:'l3_10', title:'🛒 Виджет онлайн-магазина: E-comm' },
+      { id:'l3_11', title:'👨‍💻 Виджет интеграции кода: Code' },
+      { id:'l3_12', title:'🖼 Виджеты вау-эффекта: Shots, Maps, Music' },
+      { id:'l3_13', title:'💥 Эффекты в тулбаре. Presets. Чистка' },
+    ]
+  },
+  rm4: {
+    id: 'm4', name: 'RM. Анимация',
+    lessons: [
+      { id:'l4_1', title:'🎥 Виды, примеры — 4 типа, 4 эффекта' },
+      { id:'l4_2', title:'🔄 Тип анимации при загрузке Load' },
+      { id:'l4_3', title:'🖱 Тип анимации по скроллу Scroll' },
+      { id:'l4_4', title:'📌 Тип анимации по скроллу с фиксацией Scroll + fix' },
+      { id:'l4_5', title:'👆 Тип анимации по наведению Hover и нажатию Click' },
+      { id:'l4_6', title:'🎲 Подведение итогов модуля' },
+    ]
+  },
+  rm5: {
+    id: 'm5', name: 'RM. Адаптация. Финальные настройки. Аккаунт',
+    lessons: [
+      { id:'l5_1', title:'📱 Введение в адаптации. Дизайн адаптаций' },
+      { id:'l5_2', title:'🍒 Настройка адаптаций в РМ' },
+      { id:'l5_3', title:'🚀 Подключение домена, SEO, запуск сайта' },
+      { id:'l5_4', title:'⚙️ Профиль, аккаунт' },
+    ]
+  },
+  bonus6: {
+    id: 'm6', name: '(Бонусный) Продвижение и продажи',
+    lessons: [
+      { id:'l6_1', title:'🚂 Продвижение' },
+      { id:'l6_2', title:'💰 Продажи' },
+      { id:'l6_3', title:'💼 Ведение проекта' },
+    ]
+  }
+};
+
+const MODULES = {
+  t1: [ MODULES_DEF.rm3, MODULES_DEF.rm4, MODULES_DEF.rm5, MODULES_DEF.bonus6 ],
+  t2: [ MODULES_DEF.design1, MODULES_DEF.design2, MODULES_DEF.rm3, MODULES_DEF.rm4, MODULES_DEF.rm5, MODULES_DEF.bonus6 ]
+};
+
+function getAllLessons(tariff) {
+  return MODULES[tariff].flatMap(m => m.lessons);
+}
+
+// ── STORAGE (Firestore-backed with in-memory cache) ──
+// Cache holds the full student list. Reads are instant (from cache);
+// writes update cache immediately AND push to Firestore.
+let _students = [];
+let _cloudReady = false;
+
+function loadData() { return _students; }
+
+function saveData(d) {
+  _students = d;
+  try { localStorage.setItem('rm_students', JSON.stringify(d)); } catch(e) {}
+  if (_cloudReady) syncAllToCloud(d);
+}
+
+async function syncStudentToCloud(student) {
+  if (!_cloudReady || !window._db) return;
+  try {
+    await window._fb.setDoc(window._fb.doc(window._db, 'students', student.id), student);
+  } catch (e) { console.error('cloud save failed', e); }
+}
+
+async function syncAllToCloud(list) {
+  for (const s of list) await syncStudentToCloud(s);
+}
+
+async function loadFromCloud() {
+  if (!window._db) return false;
+  try {
+    const snap = await window._fb.getDocs(window._fb.collection(window._db, 'students'));
+    _students = [];
+    snap.forEach(doc => _students.push(doc.data()));
+    _cloudReady = true;
+    return true;
+  } catch (e) { console.error('cloud load failed', e); return false; }
+}
+
+async function loadStudentFromCloud(id) {
+  if (!window._db) return null;
+  try {
+    const ref = window._fb.doc(window._db, 'students', id);
+    const snap = await window._fb.getDoc(ref);
+    return snap.exists() ? snap.data() : null;
+  } catch (e) { console.error(e); return null; }
+}
+
+let currentId = null;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── ADMIN LIST ──
+function renderStudentList() {
+  const students = loadData();
+  const el = document.getElementById('student-list');
+  document.getElementById('student-count').textContent = students.length ? ` (${students.length})` : '';
+  if (!students.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">✦</div>Ещё нет учениц.<br>Добавь первую выше.</div>';
+    return;
+  }
+  el.innerHTML = students.map(s => {
+    const all = getAllLessons(s.tariff || 't1');
+    const done = (s.done||[]).length;
+    const total = all.length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    const t = TARIFFS[s.tariff||'t1'];
+
+    // calendar status
+    const calls = s.calls || [];
+    const callsDone = calls.filter(c => c.done).length;
+    const pays = (s.payments || []).filter(p => p.amount);
+    const paidCount = pays.filter(p => p.paid).length;
+    const allPaid = pays.length && paidCount === pays.length;
+
+    let statusBits = [];
+    if (calls.length) statusBits.push(`созвоны ${callsDone}/${calls.length}`);
+    if (pays.length) {
+      statusBits.push(allPaid
+        ? '<span style="color:var(--done);font-weight:600">оплачено ✓</span>'
+        : `оплата ${paidCount}/${pays.length}`);
+    }
+    const statusLine = statusBits.length ? statusBits.join(' · ') : 'нет событий';
+
+    const initial = (s.name || '?').trim().charAt(0).toUpperCase();
+    const circ = 2 * Math.PI * 19;
+    const dash = circ * pct / 100;
+    return `<div class="student-card" onclick="openEditor('${s.id}')">
+      <div class="student-avatar">${initial}</div>
+      <div class="student-info-col">
+        <div class="student-name-row">
+          <span class="student-name">${s.name}</span>
+          <span class="tariff-pill ${t.pillClass}">${t.name}</span>
+        </div>
+        <div class="student-submeta">${statusLine}</div>
+      </div>
+      <div class="ring">
+        <svg width="44" height="44" viewBox="0 0 44 44">
+          <circle cx="22" cy="22" r="19" fill="none" stroke="var(--line)" stroke-width="4"/>
+          <circle cx="22" cy="22" r="19" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${dash} ${circ}"/>
+        </svg>
+        <span class="ring-pct">${pct}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addStudent() {
+  const name = document.getElementById('new-name').value.trim();
+  if (!name) { showToast('Введи имя'); return; }
+  const tariff = document.getElementById('new-tariff').value;
+  const email = document.getElementById('new-email').value.trim();
+  const students = loadData();
+  const id = 'u' + Date.now().toString(36);
+  // new students go to TOP
+  students.unshift({ id, name, email, tariff, priority:[], done:[], events:[], payments:[] });
+  saveData(students);
+  document.getElementById('new-name').value = '';
+  document.getElementById('new-email').value = '';
+  renderStudentList();
+  openEditor(id);
+}
+
+// ── EDITOR (draft-based: changes apply only on Save) ──
+let draftStudent = null;
+
+function openEditor(id) {
+  currentId = id;
+  const s = loadData().find(x => x.id === id);
+  if (!s) return;
+  // deep copy into draft — edits won't touch storage until Save
+  draftStudent = JSON.parse(JSON.stringify(s));
+  document.getElementById('editor-name').textContent = draftStudent.name;
+  document.getElementById('editor-email').value = draftStudent.email || '';
+  document.getElementById('editor-tariff').value = draftStudent.tariff || 't1';
+  const base = (location.origin && location.origin !== 'null') ? location.origin + location.pathname : 'стажировка.рф/';
+  document.getElementById('editor-link-val').textContent = base + '?student=' + id;
+  draftStudent.calls = draftStudent.calls || [];
+  draftStudent.payments = draftStudent.payments || [];
+  // migrate old "events" to calls if present
+  if (draftStudent.events && draftStudent.events.length && !draftStudent.calls.length) {
+    draftStudent.calls = draftStudent.events.filter(e => e.type === 'call').map(e => ({ id:e.id, date:e.date, time:e.time }));
+  }
+  // default: 3 empty calls so curator just fills dates
+  if (!draftStudent.calls.length) {
+    draftStudent.calls = [
+      { id: 'c' + Date.now().toString(36) + '1', date: '', time: '09:00', done: false },
+      { id: 'c' + Date.now().toString(36) + '2', date: '', time: '09:00', done: false },
+      { id: 'c' + Date.now().toString(36) + '3', date: '', time: '09:00', done: false },
+    ];
+  }
+  renderLessonEditor();
+  renderCalls();
+  renderPayments();
+  switchTab('plan');
+  clearDirty();
+  showScreen('screen-editor');
+}
+
+// ── DIRTY STATE (floating save bar) ──
+let _dirty = false;
+function markDirty() {
+  _dirty = true;
+  document.getElementById('floating-save').classList.add('show');
+}
+function clearDirty() {
+  _dirty = false;
+  document.getElementById('floating-save').classList.remove('show');
+}
+
+// ── TABS ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+function updateEmail(val) {
+  if (draftStudent) { draftStudent.email = val.trim(); markDirty(); }
+}
+
+// ── CALLS (созвоны с Ксюшей) ──
+function addCall() {
+  if (!draftStudent) return;
+  draftStudent.calls = draftStudent.calls || [];
+  draftStudent.calls.push({ id: 'c' + Date.now().toString(36), date: '', time: '09:00' });
+  renderCalls();
+  markDirty();
+}
+
+function updateCall(cid, field, val) {
+  const c = (draftStudent.calls || []).find(x => x.id === cid);
+  if (c) { c[field] = val; markDirty(); }
+}
+
+function delCall(cid) {
+  draftStudent.calls = (draftStudent.calls || []).filter(c => c.id !== cid);
+  renderCalls();
+  markDirty();
+}
+
+function renderCalls() {
+  const calls = draftStudent.calls || [];
+  const el = document.getElementById('call-list');
+  if (!calls.length) {
+    el.innerHTML = '<div class="list-empty">Созвонов пока нет</div>';
+    return;
+  }
+  el.innerHTML = calls.map((c, i) => `<div class="edit-row ${c.done?'row-done':''}">
+    <div class="edit-row-head">
+      <div class="edit-row-num"><span class="dot call">${i+1}</span> Созвон №${i+1}</div>
+      <button class="row-del" onclick="delCall('${c.id}')">\u00D7</button>
+    </div>
+    <div class="edit-row-fields">
+      <div class="form-field">
+        <label class="form-label">Дата</label>
+        <input class="form-input" type="date" value="${c.date}" onchange="updateCall('${c.id}','date',this.value)" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Время</label>
+        <input class="form-input" type="time" value="${c.time}" onchange="updateCall('${c.id}','time',this.value)" />
+      </div>
+    </div>
+    <div class="pay-paid-toggle">
+      <div class="pay-paid-check ${c.done?'on':''}" onclick="toggleCallDone('${c.id}')">${c.done?'\u2713':''}</div>
+      <span class="pay-paid-label">${c.done?'Созвон состоялся':'Отметить, что созвон прошёл'}</span>
+    </div>
+    ${c.date ? `<button class="row-ics-btn" onclick="downloadICS('Созвон №${i+1} (Ксюша)','${c.date}','${c.time}','call')">📅 Добавить себе в календарь</button>` : ''}
+  </div>`).join('');
+}
+
+function toggleCallDone(cid) {
+  const c = (draftStudent.calls || []).find(x => x.id === cid);
+  if (c) c.done = !c.done;
+  renderCalls();
+  markDirty();
+}
+
+// ── ADD TO PHONE CALENDAR (.ics) ──
+function downloadICS(title, date, time, type) {
+  const dt = date.replace(/-/g, '');
+  let dtLine;
+  if (time) {
+    const t = time.replace(':', '') + '00';
+    let h = parseInt(time.split(':')[0]) + 1;
+    const m = time.split(':')[1];
+    const endT = String(h).padStart(2,'0') + m + '00';
+    dtLine = `DTSTART:${dt}T${t}\nDTEND:${dt}T${endT}`;
+  } else {
+    dtLine = `DTSTART;VALUE=DATE:${dt}`;
+  }
+  const prefix = type === 'deadline' ? 'Дедлайн' : (type === 'call' ? '' : 'Оплата');
+  const summary = prefix ? `${prefix}: ${title}` : title;
+  const alarms = ['-P7D','-P2D','-P1D'].map(tr =>
+    `BEGIN:VALARM\nTRIGGER:${tr}\nACTION:DISPLAY\nDESCRIPTION:Напоминание\nEND:VALARM`).join('\n');
+  const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Стажировка//RU\nBEGIN:VEVENT\nUID:${Date.now()}@stajirovka\n${dtLine}\nSUMMARY:${summary}\n${alarms}\nEND:VEVENT\nEND:VCALENDAR`;
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `event-${date}.ics`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function fmtDate(d, t) {
+  if (!d) return '';
+  const dt = new Date(d + 'T00:00');
+  const s = dt.toLocaleDateString('ru-RU', { day:'numeric', month:'long', weekday:'short' });
+  return t ? s + ', ' + t : s;
+}
+
+function fmtShort(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  return `${day}.${m}.${y.slice(2)}`;
+}
+
+// ── PAYMENTS ──
+const PAY_METHODS = ['Т-банк', 'PayPal', 'Revolut'];
+const ARROW_SVG = '<svg class="cal-arrow-svg" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CHEVRON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function addPayment() {
+  if (!draftStudent) return;
+  draftStudent.payments = draftStudent.payments || [];
+  draftStudent.payments.push({
+    id: 'p' + Date.now().toString(36),
+    amount: '', currency: '₽', date: '', paidDate: '', paid: false, method: 'Т-банк'
+  });
+  renderPayments();
+  markDirty();
+}
+
+function updatePayment(pid, field, val) {
+  const p = (draftStudent.payments || []).find(x => x.id === pid);
+  if (!p) return;
+  p[field] = (field === 'amount') ? (parseFloat(val) || '') : val;
+  if (field === 'amount' || field === 'currency') renderPaymentSummary();
+  markDirty();
+}
+
+function togglePaid(pid) {
+  const p = (draftStudent.payments || []).find(x => x.id === pid);
+  if (p) p.paid = !p.paid;
+  renderPayments();
+  markDirty();
+}
+
+function setMethod(pid, method) {
+  const p = (draftStudent.payments || []).find(x => x.id === pid);
+  if (p) p.method = method;
+  markDirty();
+}
+
+function delPayment(pid) {
+  draftStudent.payments = (draftStudent.payments || []).filter(p => p.id !== pid);
+  renderPayments();
+  markDirty();
+}
+
+function renderPaymentSummary() {
+  const pays = (draftStudent.payments || []).filter(p => p.amount);
+  const el = document.getElementById('payment-summary');
+  if (!pays.length) { el.innerHTML = ''; return; }
+  const total = pays.length;
+  const paidCount = pays.filter(p => p.paid).length;
+  const cur = pays[0].currency;
+  const totalSum = pays.reduce((s,p) => s + (p.amount||0), 0);
+  const paidSum = pays.filter(p => p.paid).reduce((s,p) => s + (p.amount||0), 0);
+  const allPaid = paidCount === total;
+  const pct = total ? Math.round(paidCount/total*100) : 0;
+  const statusText = allPaid ? 'Оплачено полностью \u2713' : `Оплачено: ${paidCount}/${total}`;
+  el.innerHTML = `<div class="pay-summary-box">
+    <div class="pay-summary-status">${statusText}</div>
+    <div class="pay-summary-amount">${paidSum.toLocaleString('ru-RU')}${cur} <span>/ ${totalSum.toLocaleString('ru-RU')}${cur}</span></div>
+    <div class="pay-progress"><div class="pay-progress-fill" style="width:${pct}%"></div></div>
+  </div>`;
+}
+
+function renderPayments() {
+  renderPaymentSummary();
+  const pays = draftStudent.payments || [];
+  const listEl = document.getElementById('payment-list');
+  if (!pays.length) {
+    listEl.innerHTML = '<div class="list-empty">Платежей пока нет</div>';
+    return;
+  }
+  listEl.innerHTML = pays.map((p, i) => {
+    const methodOpts = PAY_METHODS.map(m => `<option value="${m}" ${p.method===m?'selected':''}>${m}</option>`).join('');
+    return `<div class="edit-row">
+      <div class="edit-row-head">
+        <div class="edit-row-num"><span class="dot ${p.paid?'paid':''}">${i+1}</span> Платёж №${i+1}</div>
+        <button class="row-del" onclick="delPayment('${p.id}')">\u00D7</button>
+      </div>
+      <div class="edit-row-fields">
+        <div class="form-field">
+          <label class="form-label">Сумма</label>
+          <input class="form-input" type="number" value="${p.amount}" placeholder="15000" onchange="updatePayment('${p.id}','amount',this.value)" />
+        </div>
+        <div class="form-field" style="max-width:80px;flex:0 0 80px">
+          <label class="form-label">Валюта</label>
+          <select class="form-select" onchange="updatePayment('${p.id}','currency',this.value)">
+            <option ${p.currency==='₽'?'selected':''}>₽</option>
+            <option ${p.currency==='€'?'selected':''}>€</option>
+            <option ${p.currency==='$'?'selected':''}>$</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Дата по плану</label>
+          <input class="form-input" type="date" value="${p.date}" onchange="updatePayment('${p.id}','date',this.value)" />
+        </div>
+      </div>
+      <div class="pay-paid-toggle">
+        <div class="pay-paid-check ${p.paid?'on':''}" onclick="togglePaid('${p.id}')">${p.paid?'\u2713':''}</div>
+        <span class="pay-paid-label">${p.paid?'Оплачено':'Отметить оплаченным'}</span>
+      </div>
+      ${p.paid ? `<div class="edit-row-fields" style="margin-top:var(--s3)">
+        <div class="form-field">
+          <label class="form-label">Когда оплачено</label>
+          <input class="form-input" type="date" value="${p.paidDate||''}" onchange="updatePayment('${p.id}','paidDate',this.value)" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Способ</label>
+          <select class="form-select" onchange="setMethod('${p.id}',this.value)">${methodOpts}</select>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+
+function changeTariff(newTariff) {
+  if (!draftStudent) return;
+  // dropping to t1 — remove design-lesson priorities that no longer exist
+  draftStudent.tariff = newTariff;
+  const validIds = getAllLessons(newTariff).map(l => l.id);
+  draftStudent.priority = (draftStudent.priority || []).filter(p => validIds.includes(p));
+  renderLessonEditor();
+  markDirty();
+}
+
+function renderLessonEditor() {
+  const s = draftStudent;
+  const tariff = s.tariff || 't1';
+  const priority = s.priority || [];
+  const modules = MODULES[tariff];
+  let html = '';
+
+  const sectionMap = tariff === 't2' ? {
+    'd1': 'design', 'd2': 'design',
+    'm3': 'rm', 'm4': 'rm', 'm5': 'rm', 'm6': 'rm'
+  } : null;
+
+  let lastSection = null;
+  let modNum = 0;
+
+  modules.forEach(mod => {
+    if (sectionMap) {
+      const sec = sectionMap[mod.id];
+      if (sec !== lastSection) {
+        lastSection = sec;
+        const label = sec === 'design' ? 'Веб-дизайн' : 'Readymag';
+        html += `<div class="section-divider"><div class="section-divider-label">${label}</div><hr class="section-divider-line"/></div>`;
+      }
+    }
+    modNum++;
+    html += `<div class="module-group"><div class="module-group-title">${modNum}. ${mod.name}</div><div class="lesson-editor-list">`;
+    mod.lessons.forEach((l, li) => {
+      const on = priority.includes(l.id);
+      html += `<div class="lesson-editor-item ${on?'is-priority':''}" onclick="togglePriority('${l.id}')">
+        <div class="priority-toggle">${on?'\u2605':''}</div>
+        <div style="flex:1"><div class="lesson-ei-title">${li+1}. ${l.title}</div></div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  document.getElementById('lesson-editor-list').innerHTML = html;
+}
+
+function togglePriority(lid) {
+  if (!draftStudent) return;
+  draftStudent.priority = draftStudent.priority || [];
+  const idx = draftStudent.priority.indexOf(lid);
+  if (idx > -1) draftStudent.priority.splice(idx,1);
+  else draftStudent.priority.push(lid);
+  renderLessonEditor();
+  markDirty();
+}
+
+function saveAndBack() {
+  if (!draftStudent) return;
+  const students = loadData();
+  const i = students.findIndex(x => x.id === currentId);
+  if (i > -1) {
+    // keep done-progress from storage, apply draft tariff + priority
+    students[i].email = draftStudent.email || '';
+    students[i].tariff = draftStudent.tariff;
+    students[i].priority = draftStudent.priority;
+    students[i].calls = draftStudent.calls || [];
+    students[i].payments = draftStudent.payments || [];
+    delete students[i].events;
+    // if tariff changed, prune done lessons that no longer exist
+    const validIds = getAllLessons(draftStudent.tariff).map(l => l.id);
+    students[i].done = (students[i].done || []).filter(d => validIds.includes(d));
+    saveData(students);
+  }
+  draftStudent = null;
+  clearDirty();
+  renderStudentList();
+  showScreen('screen-admin');
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(document.getElementById('editor-link-val').textContent)
+    .then(() => showToast('Ссылка скопирована \u2713'));
+}
+
+function deleteStudent() {
+  if (!confirm('Удалить ученицу?')) return;
+  const delId = currentId;
+  saveData(loadData().filter(x => x.id !== delId));
+  // remove from cloud
+  if (_cloudReady && window._db) {
+    window._fb.deleteDoc(window._fb.doc(window._db, 'students', delId)).catch(e => console.error(e));
+  }
+  draftStudent = null;
+  renderStudentList();
+  showScreen('screen-admin');
+}
+
+function previewAsStudent() {
+  // preview uses the DRAFT (unsaved) state so curator sees pending changes
+  document.getElementById('student-back-btn').style.display = 'flex';
+  const previewData = JSON.parse(JSON.stringify(draftStudent));
+  previewData._isPreview = true;
+  openStudentView(currentId, previewData);
+}
+
+// ── STUDENT VIEW ──
+let studentViewData = null;
+async function openStudentView(id, draftOverride) {
+  // draftOverride = preview unsaved curator changes; otherwise load
+  let s = draftOverride || loadData().find(x => x.id === id);
+  // if not in cache (student opened their own link), fetch from cloud
+  if (!s && window._db) {
+    s = await loadStudentFromCloud(id);
+  }
+  if (!s) { alert('Ученица не найдена. Проверьте ссылку.'); return; }
+  currentId = id;
+  studentViewData = s;
+  const t = TARIFFS[s.tariff||'t1'];
+  document.getElementById('s-name').textContent = s.name;
+  document.getElementById('s-tagline').textContent = t.name;
+  renderStudentLessons(s);
+  renderStudentEvents(s);
+  switchStudentTab('plan');
+  showScreen('screen-student');
+}
+
+function switchStudentTab(tab) {
+  document.querySelectorAll('[data-stab]').forEach(t => t.classList.toggle('active', t.dataset.stab === tab));
+  document.querySelectorAll('.stab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('spanel-' + tab).classList.add('active');
+}
+
+function cancelEdit() {
+  // discard unsaved draft, return to list
+  draftStudent = null;
+  clearDirty();
+  renderStudentList();
+  showScreen('screen-admin');
+}
+
+function backToEditor() {
+  // return from preview to editor, keeping the draft intact
+  document.getElementById('student-back-btn').style.display = 'none';
+  showScreen('screen-editor');
+}
+
+function renderStudentEvents(s) {
+  const el = document.getElementById('student-events');
+  if (!el) return;
+
+  let html = '';
+
+  // calls (созвоны) — show all, even without dates
+  const calls = (s.calls || []).slice().sort((a,b) => {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return (a.date+a.time).localeCompare(b.date+b.time);
+  });
+  html += '<div class="group-title">Созвоны с Ксюшей</div>';
+  if (calls.length) {
+    html += calls.map((c, i) => {
+      const whenText = c.date ? fmtDate(c.date, c.time) : 'дата не назначена';
+      return `<div class="call-card ${c.done?'is-done':''} ${!c.date?'no-date':''}">
+      <div class="call-card-top">
+        <div>
+          <div class="call-card-title">Созвон №${i+1}${c.done?' · состоялся':''}</div>
+          <div class="call-card-when">${whenText}</div>
+        </div>
+        ${c.done
+          ? '<span class="call-done-badge">✓</span>'
+          : (c.date ? `<button class="call-cal-btn" onclick="downloadICS('Созвон №${i+1} (Ксюша)','${c.date}','${c.time}','call')">В календарь ${ARROW_SVG}</button>` : '')}
+      </div>
+    </div>`;
+    }).join('');
+  } else {
+    html += '<div class="empty-status">Созвоны пока не запланированы</div>';
+  }
+  html += '<div class="section-gap"></div>';
+
+  // payments (read-only with dates)
+  const pays = (s.payments || []).filter(p => p.amount);
+  html += '<div class="group-title">План оплат</div>';
+  if (pays.length) {
+    const total = pays.length;
+    const paidCount = pays.filter(p => p.paid).length;
+    const allPaid = paidCount === total;
+    const cur = pays[0].currency;
+    const totalSum = pays.reduce((a,p) => a + (p.amount||0), 0);
+    const paidSum = pays.filter(p => p.paid).reduce((a,p) => a + (p.amount||0), 0);
+    const pct = Math.round(paidCount/total*100);
+    const statusText = allPaid ? 'Оплачено полностью ✓' : `Оплачено: ${paidCount}/${total}`;
+    html += `<div class="pay-summary-box">
+      <div class="pay-summary-status">${statusText}</div>
+      <div class="pay-summary-amount">${paidSum.toLocaleString('ru-RU')}${cur} <span>/ ${totalSum.toLocaleString('ru-RU')}${cur}</span></div>
+      <div class="pay-progress"><div class="pay-progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+    html += pays.map((p, i) => `<div class="pay-item ${p.paid?'paid':''}">
+      <div class="pay-check-sq ${p.paid?'on':''}">${p.paid?'✓':''}</div>
+      <div class="pay-body">
+        <div class="pay-label-row">Платёж №${i+1}</div>
+        <div class="pay-meta">${p.paid
+          ? 'оплачено ' + (p.paidDate ? fmtShort(p.paidDate) : '') + ' · ' + p.method
+          : (p.date ? 'по плану ' + fmtShort(p.date) : 'ожидает оплаты')}</div>
+      </div>
+      <div class="pay-amount-big">${(p.amount||0).toLocaleString('ru-RU')}${p.currency}</div>
+    </div>`).join('');
+  } else {
+    html += '<div class="empty-status">Информация об оплате отсутствует</div>';
+  }
+  html += '<div class="section-gap"></div>';
+
+  el.innerHTML = html;
+}
+
+function renderStudentLessons(s) {
+  const tariff = s.tariff || 't1';
+  const priority = s.priority || [];
+  const done = s.done || [];
+  const all = getAllLessons(tariff);
+  const total = all.length;
+  const doneCount = done.length;
+  const pct = total ? Math.round(doneCount/total*100) : 0;
+
+  document.getElementById('prog-num').innerHTML = `${doneCount}<span>/${total}</span>`;
+  document.getElementById('prog-fill').style.width = pct + '%';
+
+  // Determine "current" module = first module with an unfinished lesson
+  const mods = MODULES[tariff];
+  let currentModIdx = mods.findIndex(mod => mod.lessons.some(l => !done.includes(l.id)));
+  if (currentModIdx === -1) currentModIdx = mods.length - 1; // all done → last
+
+  // collapsed state persists per render unless user toggles
+  if (!window._collapsedMods) window._collapsedMods = {};
+
+  let html = '';
+  const sectionMap = tariff === 't2' ? {
+    'd1': 'design', 'd2': 'design',
+    'm3': 'rm', 'm4': 'rm', 'm5': 'rm', 'm6': 'rm'
+  } : null;
+  let lastSection = null;
+
+  mods.forEach((mod, idx) => {
+    if (sectionMap) {
+      const sec = sectionMap[mod.id];
+      if (sec !== lastSection) {
+        lastSection = sec;
+        const label = sec === 'design' ? 'Веб-дизайн' : 'Readymag';
+        html += `<div class="section-divider"><div class="section-divider-label">${label}</div></div>`;
+      }
+    }
+    const modNum = idx + 1;
+    const modDone = mod.lessons.filter(l => done.includes(l.id)).length;
+    const modTotal = mod.lessons.length;
+    const allModDone = modDone === modTotal;
+
+    // default collapsed unless it's the current module; user toggle overrides
+    let collapsed;
+    if (window._collapsedMods[mod.id] !== undefined) {
+      collapsed = window._collapsedMods[mod.id];
+    } else {
+      collapsed = (idx !== currentModIdx);
+    }
+
+    html += `<div class="module-block ${collapsed?'collapsed':''}" id="mod-${mod.id}">
+      <div class="module-header" onclick="toggleModule('${mod.id}')">
+        <div class="module-header-text">${modNum}. ${mod.name}</div>
+        <div class="module-header-right">
+          <span class="module-count ${allModDone?'done':''}">${modDone}/${modTotal}</span>
+          <span class="module-chevron">${CHEVRON_SVG}</span>
+        </div>
+      </div>
+      <div class="module-lessons">
+        ${mod.lessons.map((l, li) => lessonHTML(l, done.includes(l.id), priority.includes(l.id), li+1)).join('')}
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('student-lessons').innerHTML = html;
+}
+
+function toggleModule(modId) {
+  if (!window._collapsedMods) window._collapsedMods = {};
+  const block = document.getElementById('mod-' + modId);
+  const isCollapsed = block.classList.contains('collapsed');
+  window._collapsedMods[modId] = !isCollapsed;
+  block.classList.toggle('collapsed');
+}
+
+function lessonHTML(l, isDone, isPriority, num) {
+  let star = '';
+  if (isPriority && isDone) star = '<span class="lesson-star done-star">★</span>';
+  else if (isPriority) star = '<span class="lesson-star">★</span>';
+  return `<div class="lesson-item ${isPriority?'priority':''} ${isDone?'done':''}" onclick="toggleDone('${l.id}')">
+    <div class="lesson-check">${isDone?'✓':''}</div>
+    <div class="lesson-body">
+      <div class="lesson-title">${num}. ${l.title}</div>
+    </div>
+    ${star}
+  </div>`;
+}
+
+function toggleDone(lid) {
+  // operate on whatever the student view is currently showing
+  const s = studentViewData;
+  if (!s) return;
+  s.done = s.done || [];
+  const idx = s.done.indexOf(lid);
+  if (idx > -1) s.done.splice(idx,1);
+  else s.done.push(lid);
+
+  // sync the cache copy if present
+  const students = loadData();
+  const stored = students.find(x => x.id === s.id);
+  if (stored) { stored.done = s.done; }
+
+  // persist: cloud if available (so curator sees it), else local fallback
+  if (window._db && !s._isPreview) {
+    syncStudentToCloud(s);
+    try { localStorage.setItem('rm_students', JSON.stringify(students)); } catch(e){}
+  } else if (!s._isPreview) {
+    saveData(students.length ? students : [s]);
+  }
+
+  renderStudentLessons(s);
+}
+
+function showToast(msg) { /* toasts removed per design */ }
+
+// ── ACCESS ROUTING + CLOUD BOOTSTRAP ──
+// Secret admin code — change this to your own private string.
+const ADMIN_CODE = 'ReadymagicKeyKey';
+
+async function boot() {
+  const params = new URLSearchParams(location.search);
+  const studentId = params.get('student');
+  const adminCode = params.get('admin');
+
+  // wait for the firebase module script to define the ready promise
+  let tries = 0;
+  while (!window._dbReadyPromise && tries < 100) {
+    await new Promise(r => setTimeout(r, 50));
+    tries++;
+  }
+  if (window._dbReadyPromise) { try { await window._dbReadyPromise; } catch(e){} }
+
+  if (studentId) {
+    // STUDENT MODE — only their own cabinet
+    document.getElementById('student-back-btn').style.display = 'none';
+    await openStudentView(studentId);
+    return;
+  }
+
+  if (adminCode === ADMIN_CODE) {
+    // CURATOR MODE — load everything
+    await loadFromCloud();
+    renderStudentList();
+    showScreen('screen-admin');
+    return;
+  }
+
+  // No valid access — show a locked screen
+  showLocked();
+}
+
+function showLocked() {
+  document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#2f5cff;color:#fff;font-family:Inter,sans-serif;padding:32px">
+    <div style="max-width:420px;text-align:center">
+      <div style="font-size:32px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;margin-bottom:16px">Стажировка<br>RMC.Studio</div>
+      <div style="font-size:16px;color:rgba(255,255,255,0.85);line-height:1.6">Чтобы войти, используй свою персональную ссылку. Если потеряла — напиши Ксюше в Телеграм.</div>
+    </div>
+  </div>`;
+}
+
+boot();
+</script>
+</body>
+</html>
