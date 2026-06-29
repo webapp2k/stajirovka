@@ -383,8 +383,8 @@
   .progress-label { font-size: 13px; font-weight: 500; color: var(--muted-2); margin-bottom: var(--s2); }
   .progress-big { font-size: 48px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
   .progress-big span { font-size: 22px; color: var(--muted); font-weight: 600; }
-  .progress-top-row { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: var(--s4); }
-  .progress-pct { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: #4ade80; }
+  .progress-top-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--s4); }
+  .progress-pct { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1; color: var(--muted); }
   .prog-bar { height: 8px; background: rgba(255,255,255,0.15); border-radius: var(--r-pill); overflow: hidden; }
   .prog-bar-fill { height: 100%; background: var(--accent); border-radius: var(--r-pill); transition: width 0.4s; }
   .progress-detail { display: flex; flex-direction: column; }
@@ -486,7 +486,7 @@
 <div id="screen-admin" class="screen">
   <div class="app-header" style="position:relative">
     <div class="app-logo">Стажировка Rmc</div>
-    <div class="app-badge" style="position:absolute;right:calc(var(--gutter) + 48px);top:50%;transform:translateY(-50%)">Куратор · v15</div>
+    <div class="app-badge" style="position:absolute;right:calc(var(--gutter) + 48px);top:50%;transform:translateY(-50%)">Куратор · v16</div>
     <button class="refresh-btn" onclick="refreshFromCloud(this)" title="Обновить данные">↻</button>
   </div>
   <div class="wrap">
@@ -1125,43 +1125,60 @@ function toggleCallDone(cid) {
 
 // ── ADD TO PHONE CALENDAR (.ics) ──
 function downloadICS(title, date, time, type, btn) {
-  // Build a Google Calendar "add event" URL. This opens reliably in Safari and
-  // in standalone PWA mode (unlike .ics data:/blob downloads, which iOS blocks),
-  // and lets the user save to Apple Calendar or Google Calendar from there.
   const prefix = type === 'deadline' ? 'Дедлайн' : (type === 'call' ? 'Созвон' : 'Оплата');
   const cleanTitle = (title || '').replace(/^Созвон\s*/, '');
   const summary = prefix + (cleanTitle ? ': ' + cleanTitle : '');
 
   const dt = date.replace(/-/g, '');
-  let datesParam;
+  let dtLines;
   if (time) {
     const [hh, mm] = time.split(':');
     const startT = hh.padStart(2,'0') + mm + '00';
     const endH = String((parseInt(hh) + 1) % 24).padStart(2,'0');
     const endT = endH + mm + '00';
-    // local time (no Z) so Google treats it as the user's wall-clock time
-    datesParam = `${dt}T${startT}/${dt}T${endT}`;
+    dtLines = `DTSTART:${dt}T${startT}\r\nDTEND:${dt}T${endT}`;
   } else {
-    // all-day: Google needs end = next day
     const d = new Date(date + 'T00:00:00');
     const next = new Date(d.getTime() + 86400000);
     const nd = next.toISOString().slice(0,10).replace(/-/g,'');
-    datesParam = `${dt}/${nd}`;
+    dtLines = `DTSTART;VALUE=DATE:${dt}\r\nDTEND;VALUE=DATE:${nd}`;
   }
 
-  const gUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
-    + '&text=' + encodeURIComponent(summary)
-    + '&dates=' + datesParam
-    + '&details=' + encodeURIComponent('Запланировано в Стажировке RMC.Studio');
+  const ics = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//RMC//Stajirovka//RU',
+    'CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
+    'UID:' + Date.now() + '@rmc',
+    'DTSTAMP:' + dt + 'T000000Z',
+    dtLines,
+    'SUMMARY:' + summary,
+    'BEGIN:VALARM\r\nTRIGGER:-P1D\r\nACTION:DISPLAY\r\nDESCRIPTION:Напоминание\r\nEND:VALARM',
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
 
-  // open in a new tab; fall back to same-tab navigation if blocked
-  const win = window.open(gUrl, '_blank');
-  if (!win) window.location.href = gUrl;
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
 
-  if (btn) {
+  // remember the button's original label so we never corrupt it
+  const originalHTML = btn ? btn.innerHTML : null;
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS) {
+    // iOS: navigating the page to the blob URL makes Safari open the .ics with the
+    // native "Add to Calendar" sheet. (Programmatic <a download> is ignored in iOS.)
+    window.location.href = url;
+  } else {
+    const a = document.createElement('a');
+    a.href = url; a.download = `sozvon-${date}.ics`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 8000);
+
+  if (btn && originalHTML !== null) {
     btn.classList.add('cal-added');
-    btn.innerHTML = 'Открываю календарь…';
-    setTimeout(() => { btn.innerHTML = 'В календарь ' + ARROW_SVG; btn.classList.remove('cal-added'); }, 3000);
+    btn.innerHTML = 'Открываю… ✓';
+    setTimeout(() => { btn.innerHTML = originalHTML; btn.classList.remove('cal-added'); }, 2500);
   }
 }
 
@@ -1226,6 +1243,8 @@ function renderPaymentSummary() {
   const el = document.getElementById('payment-summary');
   if (!pays.length) { el.innerHTML = ''; return; }
   const total = pays.length;
+  // single payment doesn't need the black summary box
+  if (total <= 1) { el.innerHTML = ''; return; }
   const paidCount = pays.filter(p => p.paid).length;
   const cur = pays[0].currency;
   const totalSum = pays.reduce((s,p) => s + (p.amount||0), 0);
@@ -1260,7 +1279,7 @@ function renderPayments() {
           <label class="form-label">Сумма</label>
           <input class="form-input" type="number" value="${p.amount}" placeholder="15000" onchange="updatePayment('${p.id}','amount',this.value)" />
         </div>
-        <div class="form-field" style="max-width:80px;flex:0 0 80px">
+        <div class="form-field" style="max-width:90px;flex:0 0 90px">
           <label class="form-label">Валюта</label>
           <select class="form-select" onchange="updatePayment('${p.id}','currency',this.value)">
             <option ${p.currency==='₽'?'selected':''}>₽</option>
@@ -1268,6 +1287,8 @@ function renderPayments() {
             <option ${p.currency==='$'?'selected':''}>$</option>
           </select>
         </div>
+      </div>
+      <div class="edit-row-fields" style="margin-top:var(--s3)">
         <div class="form-field">
           <label class="form-label">Дата по плану</label>
           <input class="form-input" type="date" value="${p.date}" onchange="updatePayment('${p.id}','date',this.value)" />
@@ -1479,11 +1500,15 @@ function renderStudentEvents(s) {
     const paidSum = pays.filter(p => p.paid).reduce((a,p) => a + (p.amount||0), 0);
     const pct = Math.round(paidCount/total*100);
     const statusText = allPaid ? 'Оплачено полностью ✓' : `Оплачено: ${paidCount}/${total}`;
-    html += `<div class="pay-summary-box">
-      <div class="pay-summary-status">${statusText}</div>
-      <div class="pay-summary-amount">${paidSum.toLocaleString('ru-RU')}${cur} <span>/ ${totalSum.toLocaleString('ru-RU')}${cur}</span></div>
-      <div class="pay-progress"><div class="pay-progress-fill" style="width:${pct}%"></div></div>
-    </div>`;
+    // The black summary box only makes sense for multi-payment plans (installments).
+    // For a single payment, the payment row itself shows everything.
+    if (total > 1) {
+      html += `<div class="pay-summary-box">
+        <div class="pay-summary-status">${statusText}</div>
+        <div class="pay-summary-amount">${paidSum.toLocaleString('ru-RU')}${cur} <span>/ ${totalSum.toLocaleString('ru-RU')}${cur}</span></div>
+        <div class="pay-progress"><div class="pay-progress-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    }
     html += pays.map((p, i) => `<div class="pay-item ${p.paid?'paid':''}">
       <div class="pay-check-sq ${p.paid?'on':''}">${p.paid?'✓':''}</div>
       <div class="pay-body">
