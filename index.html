@@ -4,7 +4,7 @@
   СТАЖИРОВКА — трекер уроков
   ------------------------------------------------------------
   КУРАТОРСКИЙ ДОСТУП (восстановление):
-    Секретный код:  ReadymagicKeyKey
+    Секретный код: oooo (или старый ReadymagicKeyKey)
     Ссылка куратора: <твой-сайт>.netlify.app/?admin=ReadymagicKeyKey
     Почта владельца: webapp2k@gmail.com
   Если забыли код — он записан здесь, в начале файла.
@@ -124,6 +124,7 @@
 
   /* ============ LAYOUT ============ */
   .wrap { max-width: var(--maxw); margin: 0 auto; padding: var(--s6) var(--gutter) var(--s8); }
+  #screen-editor .wrap { padding-bottom: 120px; }
   .student-wrap { max-width: var(--maxw); margin: 0 auto; padding: var(--s6) var(--gutter) var(--s8); }
 
   /* big display title */
@@ -294,6 +295,9 @@
   }
   .lesson-editor-item:hover { border-color: var(--muted-2); }
   .lesson-editor-item.is-priority { border-color: var(--accent); background: var(--accent-soft); }
+  .lesson-editor-item.is-done { border-color: var(--done); background: var(--done-soft); }
+  .lesson-editor-item.is-done.is-priority { border-color: var(--done); background: var(--done-soft); }
+  .lesson-ei-done { width: 26px; height: 26px; border-radius: 50%; background: var(--done); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .priority-toggle {
     width: 24px; height: 24px; border: 2px solid var(--muted-2); border-radius: 7px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 13px; background: var(--surface); transition: all 0.12s;
@@ -459,7 +463,7 @@
   @keyframes preloader-spin { to { transform: rotate(360deg); } }
   .floating-save { position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; transform: translateY(120%); transition: transform 0.28s cubic-bezier(.2,.8,.2,1); pointer-events: none; }
   .floating-save.show { transform: translateY(0); pointer-events: auto; }
-  .floating-save-inner { max-width: 640px; margin: 0 auto; padding: var(--s3) var(--gutter) calc(var(--s4) + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(0,0,0,0.08); }
+  .floating-save-inner { max-width: 640px; margin: 0 auto; padding: var(--s3) var(--gutter) calc(var(--s6) + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(0,0,0,0.08); }
   #curator-code::placeholder { color: rgba(255,255,255,0.6); }
 </style>
 </head>
@@ -478,7 +482,7 @@
     <div class="app-logo">Стажировка Rmc</div>
     <div style="display:flex;align-items:center;gap:8px">
       <button onclick="refreshFromCloud(this)" title="Обновить данные" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">↻</button>
-      <div class="app-badge">Куратор · v12</div>
+      <div class="app-badge">Куратор · v13</div>
     </div>
   </div>
   <div class="wrap">
@@ -508,6 +512,7 @@
   <div class="app-header app-header-centered">
     <button class="back-btn back-btn-left" onclick="backToList()">←</button>
     <div class="app-logo">Карточка ученицы</div>
+    <button class="back-btn" onclick="refreshEditor(this)" title="Обновить" style="position:absolute;right:var(--gutter)">↻</button>
   </div>
   <div class="editor-neutral-zone">
     <div class="wrap" style="padding-bottom:var(--s6)">
@@ -578,6 +583,7 @@
   <div class="app-header app-header-centered">
     <button class="back-btn back-btn-left" id="student-back-btn" onclick="backToEditor()" style="display:none">←</button>
     <div class="app-logo">Стажировка Rmc</div>
+    <button class="back-btn" onclick="refreshStudent(this)" title="Обновить" style="position:absolute;right:var(--gutter)">↻</button>
   </div>
   <div class="student-wrap">
     <div class="student-head-row">
@@ -748,6 +754,37 @@ async function refreshFromCloud(btn) {
   renderStudentList();
   if (btn) { btn.style.opacity = '1'; btn.textContent = '↻'; }
   showToast('Данные обновлены ✓');
+}
+
+// Curator: re-pull this student's latest progress and re-render the editor.
+// Keeps any unsaved curator edits (priority/avatar) but refreshes `done`.
+async function refreshEditor(btn) {
+  if (!currentId || !window._db) return;
+  if (btn) { btn.style.opacity = '0.5'; btn.textContent = '⏳'; }
+  const fresh = await loadStudentFromCloud(currentId);
+  if (fresh && draftStudent) {
+    draftStudent.done = fresh.done || [];   // pull student's latest progress
+    const list = loadData();
+    const idx = list.findIndex(x => x.id === currentId);
+    if (idx > -1) list[idx].done = fresh.done || [];
+    renderLessonEditor();
+  }
+  if (btn) { btn.style.opacity = '1'; btn.textContent = '↻'; }
+  showToast('Обновлено ✓');
+}
+
+// Student: re-pull their own card from cloud (e.g. curator changed priorities).
+async function refreshStudent(btn) {
+  if (!currentId || !window._db) return;
+  if (btn) { btn.style.opacity = '0.5'; btn.textContent = '⏳'; }
+  const fresh = await loadStudentFromCloud(currentId);
+  if (fresh) {
+    studentViewData = fresh;
+    renderStudentLessons(fresh);
+    renderStudentEvents(fresh);
+  }
+  if (btn) { btn.style.opacity = '1'; btn.textContent = '↻'; }
+  showToast('Обновлено ✓');
 }
 
 async function loadFromCloud() {
@@ -1310,12 +1347,15 @@ function renderLessonEditor() {
       }
     }
     modNum++;
+    const done = s.done || [];
     html += `<div class="module-group"><div class="module-group-title">${modNum}. ${mod.name}</div><div class="lesson-editor-list">`;
     mod.lessons.forEach((l, li) => {
       const on = priority.includes(l.id);
-      html += `<div class="lesson-editor-item ${on?'is-priority':''}" onclick="togglePriority('${l.id}')">
+      const isDone = done.includes(l.id);
+      html += `<div class="lesson-editor-item ${on?'is-priority':''} ${isDone?'is-done':''}" onclick="togglePriority('${l.id}')">
         <div class="priority-toggle">${on?'\u2605':''}</div>
         <div style="flex:1"><div class="lesson-ei-title">${li+1}. ${l.title}</div></div>
+        ${isDone?'<div class="lesson-ei-done">\u2713</div>':''}
       </div>`;
     });
     html += `</div></div>`;
@@ -1415,7 +1455,7 @@ function backToEditor() {
 function renderStudentEvents(s) {
   const el = document.getElementById('student-events');
   if (!el) return;
-
+  try {
   let html = '';
 
   // calls (созвоны) — show all, even without dates
@@ -1478,6 +1518,10 @@ function renderStudentEvents(s) {
   html += '<div class="section-gap"></div>';
 
   el.innerHTML = html;
+  } catch(err) {
+    console.error('renderStudentEvents error', err);
+    el.innerHTML = '<div class="empty-status">Не удалось загрузить календарь. Нажми ↻ вверху.</div>';
+  }
 }
 
 function renderStudentLessons(s) {
@@ -1636,7 +1680,8 @@ window._showSyncError = function(msg) {
 
 // ── ACCESS ROUTING + CLOUD BOOTSTRAP ──
 // Secret admin code — change this to your own private string.
-const ADMIN_CODE = 'ReadymagicKeyKey';
+const ADMIN_CODE = 'oooo';
+const ADMIN_CODES = ['oooo', 'ReadymagicKeyKey'];  // both work, old links keep working
 
 async function boot() {
   try {
@@ -1671,7 +1716,7 @@ async function bootInner() {
     return;
   }
 
-  if (adminCode === ADMIN_CODE) {
+  if (ADMIN_CODES.includes(adminCode)) {
     // CURATOR MODE — load everything
     await loadFromCloud();
     renderStudentList();
@@ -1703,7 +1748,7 @@ function showLocked() {
 
 async function curatorLogin() {
   const val = (document.getElementById('curator-code').value || '').trim();
-  if (val === ADMIN_CODE) {
+  if (ADMIN_CODES.includes(val)) {
     // reload into admin mode so everything initialises cleanly
     location.search = '?admin=' + encodeURIComponent(ADMIN_CODE);
   } else {
