@@ -457,6 +457,9 @@
   .preloader-logo { font-family: 'Inter', sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 28px; }
   .preloader-spinner { width: 34px; height: 34px; margin: 0 auto; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: preloader-spin 0.8s linear infinite; }
   @keyframes preloader-spin { to { transform: rotate(360deg); } }
+  .floating-save { position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; transform: translateY(120%); transition: transform 0.28s cubic-bezier(.2,.8,.2,1); pointer-events: none; }
+  .floating-save.show { transform: translateY(0); pointer-events: auto; }
+  .floating-save-inner { max-width: 640px; margin: 0 auto; padding: var(--s3) var(--gutter) calc(var(--s4) + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(0,0,0,0.08); }
   #curator-code::placeholder { color: rgba(255,255,255,0.6); }
 </style>
 </head>
@@ -475,7 +478,7 @@
     <div class="app-logo">Стажировка Rmc</div>
     <div style="display:flex;align-items:center;gap:8px">
       <button onclick="refreshFromCloud(this)" title="Обновить данные" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">↻</button>
-      <div class="app-badge">Куратор · v10</div>
+      <div class="app-badge">Куратор · v12</div>
     </div>
   </div>
   <div class="wrap">
@@ -559,6 +562,12 @@
       <div id="payment-list"></div>
       <button class="btn-add-row" onclick="addPayment()">+ Добавить платёж</button>
     </div>
+    </div>
+  </div>
+
+  <div class="floating-save" id="floating-save">
+    <div class="floating-save-inner">
+      <button class="btn btn-primary btn-block" onclick="saveCuratorChanges(this)">Сохранить изменения</button>
     </div>
   </div>
 
@@ -850,9 +859,15 @@ function addStudent() {
   const tariff = document.getElementById('new-tariff').value;
   const students = loadData();
   const id = 'u' + Date.now().toString(36);
+  const newStudent = { id, name, tariff, avatar:'', priority:[], done:[], calls:[], payments:[] };
   // new students go to TOP
-  students.unshift({ id, name, tariff, avatar:'', priority:[], done:[], calls:[], payments:[] });
-  saveData(students);
+  students.unshift(newStudent);
+  _students = students;
+  try { localStorage.setItem('rm_students', JSON.stringify(students)); } catch(e){}
+  // write ONLY the new record to cloud (don't re-sync everyone — avoids clobbering)
+  if (_cloudReady && window._db) {
+    window._fb.setDoc(window._fb.doc(window._db, 'students', id), newStudent).catch(e => console.error(e));
+  }
   document.getElementById('new-name').value = '';
   renderStudentList();
   openEditor(id);
@@ -905,38 +920,59 @@ async function openEditor(id) {
   showScreen('screen-editor');
 }
 
-// ── AUTOSAVE (no save button — every edit persists instantly) ──
-let _saveTimer = null;
+// ── DIRTY STATE + EXPLICIT SAVE (curator only) ──
+let _dirty = false;
 function markDirty() {
-  // debounce a touch so rapid typing doesn't hammer the cloud
-  autoSave();
+  _dirty = true;
+  const bar = document.getElementById('floating-save');
+  if (bar) bar.classList.add('show');
 }
-function clearDirty() { /* nothing to clear — autosave is instant */ }
+function clearDirty() {
+  _dirty = false;
+  const bar = document.getElementById('floating-save');
+  if (bar) bar.classList.remove('show');
+}
 
-function autoSave() {
+// Save curator-owned fields. Pulls the freshest `done` from cloud first so we
+// NEVER overwrite the student's progress. Student owns `done`; curator owns the rest.
+async function saveCuratorChanges(btn) {
   if (!draftStudent || !currentId) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Сохраняю…'; }
   const students = loadData();
   const i = students.findIndex(x => x.id === currentId);
-  if (i < 0) return;
-  // write all draft fields into the cache copy
-  students[i].avatar = draftStudent.avatar || '';
-  students[i].tariff = draftStudent.tariff;
-  students[i].priority = draftStudent.priority || [];
-  students[i].calls = draftStudent.calls || [];
-  students[i].payments = draftStudent.payments || [];
-  delete students[i].events;
-  // prune done lessons that no longer exist for this tariff
-  const validIds = getAllLessons(draftStudent.tariff).map(l => l.id);
-  students[i].done = (students[i].done || []).filter(d => validIds.includes(d));
-  // update local cache immediately
-  _students = students;
-  try { localStorage.setItem('rm_students', JSON.stringify(students)); } catch(e){}
-  // push this one student to cloud (debounced)
-  clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(() => {
-    syncStudentToCloud(students[i]);
-    renderStudentList();
-  }, 400);
+  if (i > -1) {
+    students[i].avatar = draftStudent.avatar || '';
+    students[i].tariff = draftStudent.tariff;
+    students[i].priority = draftStudent.priority || [];
+    students[i].calls = draftStudent.calls || [];
+    students[i].payments = draftStudent.payments || [];
+    delete students[i].events;
+    _students = students;
+    try { localStorage.setItem('rm_students', JSON.stringify(students)); } catch(e){}
+    await syncCuratorFields(students[i]);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Сохранить изменения'; }
+  clearDirty();
+  renderStudentList();
+  showToast('Сохранено ✓');
+}
+
+// Write curator fields to cloud, merging the student's live `done` from cloud
+async function syncCuratorFields(student) {
+  if (!window._db) return;
+  try {
+    const fresh = await loadStudentFromCloud(student.id);
+    const merged = JSON.parse(JSON.stringify(student));
+    if (fresh) merged.done = fresh.done || student.done || [];  // keep student's progress
+    delete merged._isPreview;
+    await window._fb.setDoc(window._fb.doc(window._db, 'students', merged.id), merged);
+    const list = loadData();
+    const idx = list.findIndex(x => x.id === merged.id);
+    if (idx > -1) list[idx].done = merged.done;
+  } catch (e) {
+    console.error('curator save failed', e);
+    if (window._showSyncError) window._showSyncError(e.message || String(e));
+  }
 }
 
 // ── TABS ──
@@ -1297,13 +1333,14 @@ function togglePriority(lid) {
   markDirty();
 }
 
-function backToList() {
-  // data is already auto-saved on every edit — just flush and go back
-  if (_saveTimer) { clearTimeout(_saveTimer); }
-  if (draftStudent && currentId) {
-    const students = loadData();
-    const i = students.findIndex(x => x.id === currentId);
-    if (i > -1) syncStudentToCloud(students[i]);
+async function backToList() {
+  // if there are unsaved curator changes, ask before leaving
+  if (_dirty) {
+    if (confirm('Сохранить изменения?')) {
+      await saveCuratorChanges();
+    }
+    // either way we leave; clear dirty so the bar hides
+    clearDirty();
   }
   draftStudent = null;
   renderStudentList();
@@ -1324,6 +1361,7 @@ function deleteStudent() {
     window._fb.deleteDoc(window._fb.doc(window._db, 'students', delId)).catch(e => console.error(e));
   }
   draftStudent = null;
+  clearDirty();
   renderStudentList();
   showScreen('screen-admin');
 }
@@ -1549,13 +1587,32 @@ function toggleDone(lid) {
   // persist: cloud if available (so curator sees it), else local fallback
   if (window._db && !s._isPreview) {
     showToast('Сохраняю…');
-    syncStudentToCloud(s).then(ok => {
+    syncStudentDone(s).then(ok => {
       if (ok) showToast(nowDone ? 'Урок отмечен и сохранён ✓' : 'Отметка снята и сохранена ✓');
       else showToast('⚠️ Не сохранилось — проверь интернет');
     });
     try { localStorage.setItem('rm_students', JSON.stringify(students)); } catch(e){}
   } else if (!s._isPreview) {
     saveData(students.length ? students : [s]);
+  }
+}
+
+// Student saves ONLY their `done` progress, merging fresh curator fields so
+// the student never overwrites avatar/priority/calls/payments.
+async function syncStudentDone(student) {
+  if (!window._db) return false;
+  try {
+    const fresh = await loadStudentFromCloud(student.id);
+    const merged = fresh ? JSON.parse(JSON.stringify(fresh)) : JSON.parse(JSON.stringify(student));
+    merged.done = student.done || [];   // student owns `done`
+    merged.id = student.id;
+    delete merged._isPreview;
+    await window._fb.setDoc(window._fb.doc(window._db, 'students', merged.id), merged);
+    return true;
+  } catch (e) {
+    console.error('student save failed', e);
+    if (window._showSyncError) window._showSyncError(e.message || String(e));
+    return false;
   }
 }
 
