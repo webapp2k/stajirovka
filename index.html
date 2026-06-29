@@ -13,6 +13,9 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -272,10 +275,6 @@
   .tab-panel.active { display: block; }
 
   .editor-footer { padding-top: var(--s6); }
-  .floating-save { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; transform: translateY(120%); transition: transform 0.25s ease; pointer-events: none; }
-  .floating-save.show { transform: translateY(0); pointer-events: auto; }
-  .floating-save-inner { max-width: var(--maxw); margin: 0 auto; padding: var(--s3) var(--gutter) calc(var(--s6) + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 70%, transparent); }
-  .floating-save .btn-primary { box-shadow: 0 6px 20px rgba(47,92,255,0.3); }
   .editor-neutral-zone { background: var(--surface); border-bottom: 1px solid var(--line); }
   .editor-white-plate { background: var(--bg); min-height: 50vh; }
   /* fields inside white top block use neutral page-bg colour */
@@ -461,7 +460,7 @@
 <div id="screen-admin" class="screen active">
   <div class="app-header">
     <div class="app-logo">Стажировка Rmc</div>
-    <div class="app-badge">Куратор</div>
+    <div class="app-badge">Куратор · v7</div>
   </div>
   <div class="wrap">
     <div class="admin-hero">
@@ -1516,7 +1515,7 @@ function showToast(msg) {
   if (!t) {
     t = document.createElement('div');
     t.id = 'app-toast';
-    t.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#0a0a0a;color:#fff;padding:12px 20px;border-radius:14px;font-family:Inter,sans-serif;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.25);opacity:0;transition:opacity 0.2s;max-width:90%;text-align:center';
+    t.style.cssText = 'position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#0a0a0a;color:#fff;padding:10px 18px;border-radius:14px;font-family:Inter,sans-serif;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.25);opacity:0;transition:opacity 0.2s;max-width:90%;text-align:center';
     document.body.appendChild(t);
   }
   t.textContent = msg;
