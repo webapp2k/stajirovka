@@ -470,10 +470,13 @@
 
 
 <!-- ADMIN LIST -->
-<div id="screen-admin" class="screen active">
+<div id="screen-admin" class="screen">
   <div class="app-header">
     <div class="app-logo">Стажировка Rmc</div>
-    <div class="app-badge">Куратор · v9</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="refreshFromCloud(this)" title="Обновить данные" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">↻</button>
+      <div class="app-badge">Куратор · v10</div>
+    </div>
   </div>
   <div class="wrap">
     <div class="admin-hero">
@@ -728,6 +731,14 @@ async function syncStudentToCloud(student) {
 
 async function syncAllToCloud(list) {
   for (const s of list) await syncStudentToCloud(s);
+}
+
+async function refreshFromCloud(btn) {
+  if (btn) { btn.style.opacity = '0.5'; btn.textContent = '⏳'; }
+  await loadFromCloud();
+  renderStudentList();
+  if (btn) { btn.style.opacity = '1'; btn.textContent = '↻'; }
+  showToast('Данные обновлены ✓');
 }
 
 async function loadFromCloud() {
@@ -1537,8 +1548,10 @@ function toggleDone(lid) {
 
   // persist: cloud if available (so curator sees it), else local fallback
   if (window._db && !s._isPreview) {
+    showToast('Сохраняю…');
     syncStudentToCloud(s).then(ok => {
-      if (ok && nowDone) showToast('Отмечено ✓ Сохранено');
+      if (ok) showToast(nowDone ? 'Урок отмечен и сохранён ✓' : 'Отметка снята и сохранена ✓');
+      else showToast('⚠️ Не сохранилось — проверь интернет');
     });
     try { localStorage.setItem('rm_students', JSON.stringify(students)); } catch(e){}
   } else if (!s._isPreview) {
