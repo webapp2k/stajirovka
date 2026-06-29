@@ -488,7 +488,7 @@
 <!-- EDITOR -->
 <div id="screen-editor" class="screen">
   <div class="app-header app-header-centered">
-    <button class="back-btn back-btn-left" onclick="cancelEdit()">←</button>
+    <button class="back-btn back-btn-left" onclick="backToList()">←</button>
     <div class="app-logo">Карточка ученицы</div>
   </div>
   <div class="editor-neutral-zone">
@@ -547,12 +547,6 @@
     </div>
   </div>
 
-  <!-- floating save bar (appears on changes) -->
-  <div class="floating-save" id="floating-save">
-    <div class="floating-save-inner">
-      <button class="btn btn-primary btn-block" onclick="saveAndBack()">Сохранить изменения</button>
-    </div>
-  </div>
 </div>
 
 <!-- STUDENT VIEW -->
@@ -776,10 +770,10 @@ function renderStudentList() {
     const paidCount = pays.filter(p => p.paid).length;
     const allPaid = pays.length && paidCount === pays.length;
 
-    const callsText = callsTotal ? `созвоны ${callsDone}/${callsTotal}` : 'созвоны не назначены';
+    const callsText = `созвонов ${callsDone}/${callsTotal || 3}`;
     let paysText;
-    if (!pays.length) paysText = 'оплат нет';
-    else if (allPaid) paysText = '<span style="color:var(--done);font-weight:600">оплачено ✓</span>';
+    if (!pays.length) paysText = 'не оплачено';
+    else if (allPaid) paysText = '<span style="color:var(--done);font-weight:600">оплачено</span>';
     else paysText = `оплат ${paidCount}/${pays.length}`;
     const statusLine = `${callsText} · ${paysText}`;
 
@@ -868,15 +862,38 @@ async function openEditor(id) {
   showScreen('screen-editor');
 }
 
-// ── DIRTY STATE (floating save bar) ──
-let _dirty = false;
+// ── AUTOSAVE (no save button — every edit persists instantly) ──
+let _saveTimer = null;
 function markDirty() {
-  _dirty = true;
-  document.getElementById('floating-save').classList.add('show');
+  // debounce a touch so rapid typing doesn't hammer the cloud
+  autoSave();
 }
-function clearDirty() {
-  _dirty = false;
-  document.getElementById('floating-save').classList.remove('show');
+function clearDirty() { /* nothing to clear — autosave is instant */ }
+
+function autoSave() {
+  if (!draftStudent || !currentId) return;
+  const students = loadData();
+  const i = students.findIndex(x => x.id === currentId);
+  if (i < 0) return;
+  // write all draft fields into the cache copy
+  students[i].avatar = draftStudent.avatar || '';
+  students[i].tariff = draftStudent.tariff;
+  students[i].priority = draftStudent.priority || [];
+  students[i].calls = draftStudent.calls || [];
+  students[i].payments = draftStudent.payments || [];
+  delete students[i].events;
+  // prune done lessons that no longer exist for this tariff
+  const validIds = getAllLessons(draftStudent.tariff).map(l => l.id);
+  students[i].done = (students[i].done || []).filter(d => validIds.includes(d));
+  // update local cache immediately
+  _students = students;
+  try { localStorage.setItem('rm_students', JSON.stringify(students)); } catch(e){}
+  // push this one student to cloud (debounced)
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    syncStudentToCloud(students[i]);
+    renderStudentList();
+  }, 400);
 }
 
 // ── TABS ──
@@ -1022,10 +1039,16 @@ function downloadICS(title, date, time, type, btn) {
   const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
   if (isIOS) {
-    // On iOS, navigating to the blob opens the system "Add to Calendar" sheet
-    window.location.href = url;
+    // iOS recognises a base64 data: URI of an .ics and offers "Add to Calendar".
+    // Encode UTF-8 safely to base64.
+    const b64 = btoa(unescape(encodeURIComponent(ics)));
+    const dataUri = 'data:text/calendar;charset=utf-8;base64,' + b64;
+    // Navigating the top window triggers the system import sheet.
+    window.location.href = dataUri;
   } else {
     const a = document.createElement('a');
     a.href = url;
@@ -1228,25 +1251,15 @@ function togglePriority(lid) {
   markDirty();
 }
 
-function saveAndBack() {
-  if (!draftStudent) return;
-  const students = loadData();
-  const i = students.findIndex(x => x.id === currentId);
-  if (i > -1) {
-    // keep done-progress from storage, apply draft tariff + priority
-    students[i].avatar = draftStudent.avatar || '';
-    students[i].tariff = draftStudent.tariff;
-    students[i].priority = draftStudent.priority;
-    students[i].calls = draftStudent.calls || [];
-    students[i].payments = draftStudent.payments || [];
-    delete students[i].events;
-    // if tariff changed, prune done lessons that no longer exist
-    const validIds = getAllLessons(draftStudent.tariff).map(l => l.id);
-    students[i].done = (students[i].done || []).filter(d => validIds.includes(d));
-    saveData(students);
+function backToList() {
+  // data is already auto-saved on every edit — just flush and go back
+  if (_saveTimer) { clearTimeout(_saveTimer); }
+  if (draftStudent && currentId) {
+    const students = loadData();
+    const i = students.findIndex(x => x.id === currentId);
+    if (i > -1) syncStudentToCloud(students[i]);
   }
   draftStudent = null;
-  clearDirty();
   renderStudentList();
   showScreen('screen-admin');
 }
@@ -1305,11 +1318,8 @@ function switchStudentTab(tab) {
 }
 
 function cancelEdit() {
-  // discard unsaved draft, return to list
-  draftStudent = null;
-  clearDirty();
-  renderStudentList();
-  showScreen('screen-admin');
+  // alias kept for safety — autosave means nothing to discard
+  backToList();
 }
 
 function backToEditor() {
