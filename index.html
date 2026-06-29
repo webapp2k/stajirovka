@@ -225,7 +225,7 @@
   .editor-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4); margin-bottom: var(--s5); }
   .editor-name-block { display: flex; align-items: center; gap: var(--s3); flex: 1; min-width: 0; }
   .editor-avatar { width: 56px; height: 56px; border-radius: var(--r-pill); background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; flex-shrink: 0; cursor: pointer; position: relative; overflow: visible; background-size: cover; background-position: center; }
-  .editor-avatar-add { position: absolute; right: -3px; bottom: -3px; width: 24px; height: 24px; border-radius: var(--r-pill); background: var(--bg); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 500; line-height: 1; border: 1px solid var(--line); }
+  .editor-avatar-add { position: absolute; right: -3px; bottom: -3px; width: 24px; height: 24px; border-radius: var(--r-pill); background: var(--bg); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 500; line-height: 1; padding-bottom: 2px; border: 1px solid var(--line); box-sizing: border-box; }
   .editor-avatar.has-img span { display: none; }
   .editor-name { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
   .editor-top-actions { display: flex; align-items: center; gap: var(--s2); flex-shrink: 0; }
@@ -711,7 +711,13 @@ async function syncStudentToCloud(student) {
     const clean = JSON.parse(JSON.stringify(student));
     delete clean._isPreview;
     await window._fb.setDoc(window._fb.doc(window._db, 'students', clean.id), clean);
-  } catch (e) { console.error('cloud save failed', e); }
+    return true;
+  } catch (e) {
+    console.error('cloud save failed', e);
+    // surface the error so problems aren't silent
+    if (window._showSyncError) window._showSyncError(e.message || String(e));
+    return false;
+  }
 }
 
 async function syncAllToCloud(list) {
@@ -762,21 +768,20 @@ function renderStudentList() {
     const pct = total ? Math.round(done/total*100) : 0;
     const t = TARIFFS[s.tariff||'t1'];
 
-    // calendar status
+    // calendar status — always show both, with consistent wording
     const calls = s.calls || [];
+    const callsTotal = calls.length;
     const callsDone = calls.filter(c => c.done).length;
     const pays = (s.payments || []).filter(p => p.amount);
     const paidCount = pays.filter(p => p.paid).length;
     const allPaid = pays.length && paidCount === pays.length;
 
-    let statusBits = [];
-    if (calls.length) statusBits.push(`созвоны ${callsDone}/${calls.length}`);
-    if (pays.length) {
-      statusBits.push(allPaid
-        ? '<span style="color:var(--done);font-weight:600">оплачено ✓</span>'
-        : `оплата ${paidCount}/${pays.length}`);
-    }
-    const statusLine = statusBits.length ? statusBits.join(' · ') : 'нет событий';
+    const callsText = callsTotal ? `созвоны ${callsDone}/${callsTotal}` : 'созвоны не назначены';
+    let paysText;
+    if (!pays.length) paysText = 'оплат нет';
+    else if (allPaid) paysText = '<span style="color:var(--done);font-weight:600">оплачено ✓</span>';
+    else paysText = `оплат ${paidCount}/${pays.length}`;
+    const statusLine = `${callsText} · ${paysText}`;
 
     const initial = (s.name || '?').trim().charAt(0).toUpperCase();
     const circ = 2 * Math.PI * 19;
@@ -989,26 +994,49 @@ function downloadICS(title, date, time, type, btn) {
     let h = parseInt(time.split(':')[0]) + 1;
     const m = time.split(':')[1];
     const endT = String(h).padStart(2,'0') + m + '00';
-    dtLine = `DTSTART:${dt}T${t}\nDTEND:${dt}T${endT}`;
+    dtLine = `DTSTART:${dt}T${t}\r\nDTEND:${dt}T${endT}`;
   } else {
     dtLine = `DTSTART;VALUE=DATE:${dt}`;
   }
   const prefix = type === 'deadline' ? 'Дедлайн' : (type === 'call' ? '' : 'Оплата');
   const summary = prefix ? `${prefix}: ${title}` : title;
   const alarms = ['-P7D','-P1D'].map(tr =>
-    `BEGIN:VALARM\nTRIGGER:${tr}\nACTION:DISPLAY\nDESCRIPTION:Напоминание\nEND:VALARM`).join('\n');
-  const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Стажировка//RU\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nBEGIN:VEVENT\nUID:${Date.now()}@stajirovka\nDTSTAMP:${dt}T000000Z\n${dtLine}\nSUMMARY:${summary}\n${alarms}\nEND:VEVENT\nEND:VCALENDAR`;
+    `BEGIN:VALARM\r\nTRIGGER:${tr}\r\nACTION:DISPLAY\r\nDESCRIPTION:Напоминание\r\nEND:VALARM`).join('\r\n');
+  // ICS spec requires CRLF line endings — iOS Calendar is strict about this
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Стажировка//RU',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    'UID:' + Date.now() + '@stajirovka',
+    'DTSTAMP:' + dt + 'T000000Z',
+    dtLine,
+    'SUMMARY:' + summary,
+    alarms,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
 
-  // iOS Safari handles a data: URL better than a blob download for calendar
-  const dataUrl = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
-  const a = document.createElement('a');
-  a.href = dataUrl;
-  a.download = `event-${date}.ics`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
 
-  // visual feedback — turn the button green "добавлено"
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (isIOS) {
+    // On iOS, navigating to the blob opens the system "Add to Calendar" sheet
+    window.location.href = url;
+  } else {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `event-${date}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+  // visual feedback
   if (btn) {
     btn.classList.add('cal-added');
     btn.innerHTML = 'Добавлено ✓';
@@ -1451,6 +1479,7 @@ function toggleDone(lid) {
   if (!s) return;
   s.done = s.done || [];
   const idx = s.done.indexOf(lid);
+  const nowDone = idx === -1;
   if (idx > -1) s.done.splice(idx,1);
   else s.done.push(lid);
 
@@ -1459,18 +1488,36 @@ function toggleDone(lid) {
   const stored = students.find(x => x.id === s.id);
   if (stored) { stored.done = s.done; }
 
+  renderStudentLessons(s);
+
   // persist: cloud if available (so curator sees it), else local fallback
   if (window._db && !s._isPreview) {
-    syncStudentToCloud(s);
+    syncStudentToCloud(s).then(ok => {
+      if (ok && nowDone) showToast('Отмечено ✓ Сохранено');
+    });
     try { localStorage.setItem('rm_students', JSON.stringify(students)); } catch(e){}
   } else if (!s._isPreview) {
     saveData(students.length ? students : [s]);
   }
-
-  renderStudentLessons(s);
 }
 
-function showToast(msg) { /* toasts removed per design */ }
+function showToast(msg) {
+  let t = document.getElementById('app-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'app-toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#0a0a0a;color:#fff;padding:12px 20px;border-radius:14px;font-family:Inter,sans-serif;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.25);opacity:0;transition:opacity 0.2s;max-width:90%;text-align:center';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2600);
+}
+
+window._showSyncError = function(msg) {
+  showToast('⚠️ Не удалось сохранить в облако: ' + msg);
+};
 
 // ── ACCESS ROUTING + CLOUD BOOTSTRAP ──
 // Secret admin code — change this to your own private string.
