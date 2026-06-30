@@ -141,8 +141,10 @@
     font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 500; color: var(--ink);
     appearance: none; transition: box-shadow 0.15s; accent-color: var(--accent);
   }
-  input[type="date"], input[type="time"] { accent-color: var(--accent); }
-  html { accent-color: var(--accent); }
+  input[type="date"], input[type="time"] { accent-color: #2f5cff; -webkit-appearance: none; }
+  input[type="date"]::-webkit-date-and-time-value { text-align: center; }
+  html { accent-color: #2f5cff; }
+  :root { accent-color: #2f5cff; }
   .form-input::placeholder { color: var(--muted-2); font-weight: 400; }
   .form-input:focus, .form-select:focus { outline: none; box-shadow: 0 0 0 2px var(--accent); }
   .form-select {
@@ -490,7 +492,7 @@
 <div id="screen-admin" class="screen">
   <div class="app-header">
     <div class="app-logo">Стажировка Rmc</div>
-    <div class="app-badge" style="position:absolute;right:calc(var(--gutter) + 48px);top:50%;transform:translateY(-50%)">Куратор · v21</div>
+    <div class="app-badge" style="position:absolute;right:calc(var(--gutter) + 48px);top:50%;transform:translateY(-50%)">Куратор · v23</div>
     <button class="refresh-btn" onclick="refreshFromCloud(this)" title="Обновить данные">↻</button>
   </div>
   <div class="wrap">
@@ -1082,7 +1084,27 @@ function addCall() {
 
 function updateCall(cid, field, val) {
   const c = (draftStudent.calls || []).find(x => x.id === cid);
-  if (c) { c[field] = val; markDirty(); }
+  if (c) {
+    c[field] = val;
+    markDirty();
+    // show/hide the calendar button for THIS call without re-rendering
+    // (re-rendering mid-interaction collapses the iOS date picker)
+    if (field === 'date') updateCallCalBtn(cid);
+  }
+}
+
+// Toggle the "В календарь" button for a single call row in place
+function updateCallCalBtn(cid) {
+  const c = (draftStudent.calls || []).find(x => x.id === cid);
+  if (!c) return;
+  const slot = document.getElementById('cal-btn-' + cid);
+  if (!slot) return;
+  const i = (draftStudent.calls || []).findIndex(x => x.id === cid);
+  if (c.date && !c.done) {
+    slot.innerHTML = `<button class="row-ics-btn" onclick="downloadICS('Созвон №${i+1} (Ксюша)','${c.date}','${c.time}','call',this)">📅 Добавить в календарь</button>`;
+  } else {
+    slot.innerHTML = '';
+  }
 }
 
 function delCall(cid) {
@@ -1117,7 +1139,7 @@ function renderCalls() {
       <div class="pay-paid-check ${c.done?'on':''}" onclick="toggleCallDone('${c.id}')">${c.done?'\u2713':''}</div>
       <span class="pay-paid-label">${c.done?'Созвон состоялся':'Отметить, что созвон прошёл'}</span>
     </div>
-    ${c.date ? `<button class="row-ics-btn" onclick="downloadICS('Созвон №${i+1} (Ксюша)','${c.date}','${c.time}','call',this)">📅 Добавить в календарь</button>` : ''}
+    <div id="cal-btn-${c.id}">${(c.date && !c.done) ? `<button class="row-ics-btn" onclick="downloadICS('Созвон №${i+1} (Ксюша)','${c.date}','${c.time}','call',this)">📅 Добавить в календарь</button>` : ''}</div>
   </div>`).join('');
 }
 
